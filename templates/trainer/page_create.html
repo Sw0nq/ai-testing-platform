@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Create Page | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>Create page</h1>
+            <p class="subtitle">Define a new web form schema for testing practice.</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_list' %}">Back to list</a>
+    </section>
+
+    <section class="panel">
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <div class="actions">
+                <button class="button" type="submit">Create page</button>
+                <a class="button secondary" href="{% url 'trainer:page_list' %}">Cancel</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

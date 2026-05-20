@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ page.name }} | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>Delete page</h1>
+            <p class="subtitle">Confirm deletion before removing this page schema.</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Back to detail</a>
+    </section>
+
+    <section class="panel">
+        <p>Are you sure you want to delete <strong>{{ page.name }}</strong>?</p>
+        <p class="muted">This action cannot be undone.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="actions">
+                <button class="button danger" type="submit">Delete</button>
+                <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Cancel</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

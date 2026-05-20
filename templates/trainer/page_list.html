@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Page Schemas | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>AI Testing Platform</h1>
+            <p class="subtitle">Интерактивная обучающая среда для практики ручного тестирования веб-форм с использованием AI</p>
+        </div>
+        <a class="button" href="{% url 'trainer:page_create' %}">Create page</a>
+    </section>
+
+    <section class="panel">
+        {% if pages %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Created by</th>
+                        <th>Created at</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for page in pages %}
+                        <tr>
+                            <td>{{ page.name }}</td>
+                            <td>{{ page.description|default:"No description" }}</td>
+                            <td>{{ page.created_by }}</td>
+                            <td>{{ page.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">View</a>
+                                    <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Edit</a>
+                                    <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No page schemas have been created yet.</p>
+        {% endif %}
+    </section>
+{% endblock %}

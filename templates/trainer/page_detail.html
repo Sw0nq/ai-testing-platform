@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.name }} | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>{{ page.name }}</h1>
+            <p class="subtitle">Page schema details</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Edit</a>
+            <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Delete</a>
+        </div>
+    </section>
+
+    <section class="panel">
+        <dl class="details">
+            <dt>Name</dt>
+            <dd>{{ page.name }}</dd>
+
+            <dt>Description</dt>
+            <dd>{{ page.description|default:"No description" }}</dd>
+
+            <dt>Created by</dt>
+            <dd>{{ page.created_by }}</dd>
+
+            <dt>Created at</dt>
+            <dd>{{ page.created_at|date:"Y-m-d H:i" }}</dd>
+        </dl>
+    </section>
+{% endblock %}
