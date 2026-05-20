@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование поля | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>Редактирование поля</h1>
+            <p class="subtitle">{{ page.name }} / {{ field.label }}</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">К конструктору страницы</a>
+    </section>
+
+    <section class="panel">
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for form_field in form %}
+                <div class="form-group">
+                    {{ form_field.label_tag }}
+                    {{ form_field }}
+                    {{ form_field.errors }}
+                </div>
+            {% endfor %}
+            <div class="actions">
+                <button class="button" type="submit">Сохранить поле</button>
+                <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Отмена</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

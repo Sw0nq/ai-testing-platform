@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Удаление поля | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <section class="page-header">
+        <div>
+            <h1>Удаление поля</h1>
+            <p class="subtitle">{{ page.name }}</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">К конструктору страницы</a>
+    </section>
+
+    <section class="panel">
+        <p>Вы уверены, что хотите удалить поле <strong>{{ field.label }}</strong>?</p>
+        <p class="muted">Системное имя: {{ field.name }}</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="actions">
+                <button class="button danger" type="submit">Удалить поле</button>
+                <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Отмена</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

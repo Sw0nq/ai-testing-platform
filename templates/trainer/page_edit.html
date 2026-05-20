@@ -1,19 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Edit {{ page.name }} | AI Testing Platform{% endblock %}
+{% block title %}Редактирование {{ page.name }} | AI Testing Platform{% endblock %}
 
 {% block content %}
     <section class="page-header">
         <div>
-            <h1>Edit page</h1>
+            <h1>Редактирование страницы</h1>
             <p class="subtitle">{{ page.name }}</p>
         </div>
-        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Back to detail</a>
+        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К деталям</a>
     </section>
 
     <section class="panel">
         <form method="post" class="form-grid">
             {% csrf_token %}
+            {{ form.non_field_errors }}
             {% for field in form %}
                 <div class="form-group">
                     {{ field.label_tag }}
@@ -22,8 +23,75 @@
                 </div>
             {% endfor %}
             <div class="actions">
-                <button class="button" type="submit">Save changes</button>
-                <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Cancel</a>
+                <button class="button" type="submit" name="save_page">Сохранить страницу</button>
+                <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Отмена</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="page-header" style="margin-top: 28px;">
+        <div>
+            <h1>Поля формы</h1>
+            <p class="subtitle">Конструктор полей для выбранной страницы.</p>
+        </div>
+    </section>
+
+    <section class="panel" style="margin-bottom: 20px;">
+        {% if fields %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Порядок</th>
+                        <th>Имя</th>
+                        <th>Метка</th>
+                        <th>Тип</th>
+                        <th>Обязательное</th>
+                        <th>Мин.</th>
+                        <th>Макс.</th>
+                        <th>Правила</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field_schema in fields %}
+                        <tr>
+                            <td>{{ field_schema.order }}</td>
+                            <td>{{ field_schema.name }}</td>
+                            <td>{{ field_schema.label }}</td>
+                            <td>{{ field_schema.get_field_type_display }}</td>
+                            <td>{% if field_schema.is_required %}Да{% else %}Нет{% endif %}</td>
+                            <td>{{ field_schema.min_length|default:"-" }}</td>
+                            <td>{{ field_schema.max_length|default:"-" }}</td>
+                            <td>{{ field_schema.custom_rules|default:"-" }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="button secondary" href="{% url 'trainer:field_edit' page.pk field_schema.pk %}">Редактировать поле</a>
+                                    <a class="button danger" href="{% url 'trainer:field_delete' page.pk field_schema.pk %}">Удалить поле</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Для этой страницы пока не добавлены поля.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2 style="margin-top: 0;">Добавить новое поле</h2>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ field_form.non_field_errors }}
+            {% for field in field_form %}
+                <div class="form-group">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <div class="actions">
+                <button class="button" type="submit" name="add_field">Добавить поле</button>
             </div>
         </form>
     </section>

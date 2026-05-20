@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Песочница {{ page.name }} | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .sandbox-layout {
+            display: grid;
+            gap: 20px;
+        }
+
+        .sandbox-description {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .sandbox-help {
+            color: var(--muted);
+            display: block;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .submitted-data {
+            background: #111827;
+            border-radius: 8px;
+            color: #e5e7eb;
+            overflow-x: auto;
+            padding: 16px;
+            white-space: pre-wrap;
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>Песочница: {{ page.name }}</h1>
+            <p class="sandbox-description">{{ page.description|default:"Описание не указано." }}</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+    </section>
+
+    <div class="sandbox-layout">
+        <section class="panel">
+            <form method="post" class="form-grid">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+
+                {% if form.fields %}
+                    {% for field in form %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <span class="sandbox-help">{{ field.help_text }}</span>
+                            {% endif %}
+                            {{ field.errors }}
+                        </div>
+                    {% endfor %}
+                    <div class="actions">
+                        <button class="button" type="submit">Отправить форму</button>
+                    </div>
+                {% else %}
+                    <p class="muted">Для этой страницы пока не настроены поля.</p>
+                {% endif %}
+            </form>
+        </section>
+
+        {% if submitted_data %}
+            <section class="panel">
+                <h2 style="margin-top: 0;">Отправленные данные</h2>
+                <pre class="submitted-data">{{ submitted_data }}</pre>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}
