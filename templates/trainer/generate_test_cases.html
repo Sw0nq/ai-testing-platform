@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}AI генерация тест-кейсов | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .generation-layout {
+            display: grid;
+            gap: 20px;
+        }
+
+        .field-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .field-list li {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            list-style: none;
+            padding: 12px;
+        }
+
+        .json-value {
+            background: #111827;
+            border-radius: 6px;
+            color: #e5e7eb;
+            display: block;
+            max-width: 360px;
+            overflow-x: auto;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+
+        .batch-title {
+            border-bottom: 1px solid var(--border);
+            margin: 20px 0 0;
+            padding-bottom: 8px;
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>AI генерация тест-кейсов</h1>
+            <p class="subtitle">{{ page.name }}</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+    </section>
+
+    <div class="generation-layout">
+        <section class="panel">
+            <h2 style="margin-top: 0;">Описание страницы</h2>
+            <p>{{ page.description|default:"Описание не указано." }}</p>
+        </section>
+
+        <section class="panel">
+            <h2 style="margin-top: 0;">Поля для генерации</h2>
+            {% if fields %}
+                <ul class="field-list">
+                    {% for field in fields %}
+                        <li>
+                            <strong>{{ field.order }}. {{ field.label }}</strong>
+                            <div class="muted">
+                                {{ field.name }} / {{ field.get_field_type_display }}
+                                {% if field.is_required %} / обязательное{% endif %}
+                            </div>
+                            {% if field.custom_rules %}
+                                <div>{{ field.custom_rules }}</div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted">Для генерации нужно добавить поля формы.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <form method="post">
+                {% csrf_token %}
+                <button class="button" type="submit">Сгенерировать тест-кейсы</button>
+            </form>
+
+            {% if generation_batch %}
+                <p class="muted">Новая партия генерации: {{ generation_batch }}</p>
+            {% endif %}
+        </section>
+
+        {% if test_case_groups %}
+            <section class="panel">
+                <h2 style="margin-top: 0;">Тест-кейсы</h2>
+
+                {% for batch, test_cases in test_case_groups %}
+                    <h3 class="batch-title">Партия: {{ batch }}</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Приоритет</th>
+                                <th>Входные данные</th>
+                                <th>Ожидаемый результат</th>
+                                <th>Создан</th>
+                                <th>generation_batch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test_case in test_cases %}
+                                <tr>
+                                    <td>{{ test_case.title }}</td>
+                                    <td>{{ test_case.get_test_type_display }}</td>
+                                    <td>{{ test_case.get_priority_display }}</td>
+                                    <td><code class="json-value">{{ test_case.input_data }}</code></td>
+                                    <td>{{ test_case.expected_result }}</td>
+                                    <td>{{ test_case.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ test_case.generation_batch }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+            </section>
+        {% else %}
+            <section class="panel">
+                <p class="muted">Тест-кейсы пока не сгенерированы.</p>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}

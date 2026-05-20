@@ -6,27 +6,28 @@
     <section class="page-header">
         <div>
             <h1>{{ page.name }}</h1>
-            <p class="subtitle">Page schema details</p>
+            <p class="subtitle">Детальная информация о странице</p>
         </div>
         <div class="actions">
             <a class="button" href="{% url 'trainer:sandbox' page.pk %}">Открыть песочницу</a>
-            <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Edit</a>
-            <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Delete</a>
+            <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI генерация тест-кейсов</a>
+            <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Редактировать</a>
+            <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Удалить</a>
         </div>
     </section>
 
     <section class="panel">
         <dl class="details">
-            <dt>Name</dt>
+            <dt>Название</dt>
             <dd>{{ page.name }}</dd>
 
-            <dt>Description</dt>
-            <dd>{{ page.description|default:"No description" }}</dd>
+            <dt>Описание</dt>
+            <dd>{{ page.description|default:"Описание не указано" }}</dd>
 
-            <dt>Created by</dt>
+            <dt>Автор</dt>
             <dd>{{ page.created_by }}</dd>
 
-            <dt>Created at</dt>
+            <dt>Дата создания</dt>
             <dd>{{ page.created_at|date:"Y-m-d H:i" }}</dd>
         </dl>
     </section>

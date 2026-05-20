@@ -1,7 +1,9 @@
 """Views for the trainer app."""
+from collections import OrderedDict
 import json
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -10,6 +12,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from .forms import DynamicSandboxForm, FieldSchemaForm, PageSchemaForm
 from .models import FieldSchema, PageSchema
+from .services import TestCaseGenerationError, generate_and_save_test_cases
 
 
 class PageSchemaListView(LoginRequiredMixin, ListView):
@@ -107,6 +110,55 @@ class PageSchemaDeleteView(LoginRequiredMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, "Page schema deleted successfully.")
         return super().form_valid(form)
+
+
+def _get_test_case_groups(page):
+    groups = OrderedDict()
+    test_cases = page.test_cases.order_by("-created_at", "generation_batch", "title")
+
+    for test_case in test_cases:
+        batch = str(test_case.generation_batch)
+        groups.setdefault(batch, []).append(test_case)
+
+    return groups.items()
+
+
+@login_required
+def page_generate_test_cases(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk)
+    fields = page.fields.order_by("order", "id")
+    generated_test_cases = []
+    generation_batch = None
+
+    if request.method == "POST":
+        if not fields.exists():
+            messages.error(
+                request,
+                "Нельзя сгенерировать тест-кейсы: сначала добавьте поля формы.",
+            )
+        else:
+            try:
+                generated_test_cases, generation_batch = generate_and_save_test_cases(page)
+                messages.success(
+                    request,
+                    f"Сгенерировано тест-кейсов: {len(generated_test_cases)}.",
+                )
+            except TestCaseGenerationError as exc:
+                messages.error(request, str(exc))
+            except Exception as exc:
+                messages.error(request, f"Ошибка генерации тест-кейсов: {exc}")
+
+    return render(
+        request,
+        "trainer/generate_test_cases.html",
+        {
+            "page": page,
+            "fields": fields,
+            "generated_test_cases": generated_test_cases,
+            "generation_batch": generation_batch,
+            "test_case_groups": _get_test_case_groups(page),
+        },
+    )
 
 
 class SandboxView(LoginRequiredMixin, View):
