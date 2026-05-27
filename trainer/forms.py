@@ -3,7 +3,7 @@ import re
 
 from django import forms
 
-from .models import FieldSchema, PageSchema, TestCase, TestRun, TestRunResult, TestRunSession
+from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
 
 
 class PageSchemaForm(forms.ModelForm):
@@ -201,18 +201,6 @@ class DynamicSandboxForm(forms.Form):
             **common_options,
             widget=self._text_widget(field_schema),
         )
-
-
-class TestRunForm(forms.ModelForm):
-    """Form for saving a manual test run result."""
-
-    class Meta:
-        model = TestRun
-        fields = ("status", "notes")
-        labels = {
-            "status": "Статус",
-            "notes": "Заметки",
-        }
 
 
 class TestRunSessionCreateForm(forms.ModelForm):

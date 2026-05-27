@@ -4,8 +4,8 @@ import os
 import re
 import uuid
 
-import requests
 from django.db import transaction
+from google import genai
 
 from .models import TestCase
 
@@ -50,8 +50,14 @@ def build_test_case_prompt(page_schema):
 Поля формы:
 {fields_text}
 
-Сгенерируй позитивные, негативные и граничные тест-кейсы.
-Верни только строго валидный JSON без пояснений, комментариев и markdown.
+Сгенерируй ровно 10 тест-кейсов:
+- 3 позитивных тест-кейса с "test_type": "positive"
+- 4 негативных тест-кейса с "test_type": "negative"
+- 3 граничных тест-кейса с "test_type": "boundary"
+Верни только строго валидный JSON.
+Не добавляй markdown.
+Не добавляй пояснения.
+Не добавляй комментарии.
 JSON должен точно соответствовать формату:
 {{
   "test_cases": [
@@ -69,56 +75,30 @@ JSON должен точно соответствовать формату:
 """.strip()
 
 
-def call_yandex_gpt(prompt):
-    """Call YandexGPT completion API and return generated text."""
-    api_key = os.getenv("YANDEX_GPT_API_KEY")
-    folder_id = os.getenv("YANDEX_GPT_FOLDER_ID")
-    model_uri = os.getenv("YANDEX_GPT_MODEL_URI")
-    api_url = os.getenv(
-        "YANDEX_GPT_API_URL",
-        "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
-    )
+def call_gemini(prompt):
+    """Call Gemini API and return generated text."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
     if not api_key:
-        raise TestCaseGenerationError("YANDEX_GPT_API_KEY is not set.")
-
-    if not model_uri:
-        if not folder_id:
-            raise TestCaseGenerationError(
-                "YANDEX_GPT_FOLDER_ID is required when YANDEX_GPT_MODEL_URI is not set."
-            )
-        model_uri = f"gpt://{folder_id}/yandexgpt-lite"
-
-    payload = {
-        "modelUri": model_uri,
-        "completionOptions": {
-            "stream": False,
-            "temperature": 0.2,
-            "maxTokens": 3000,
-        },
-        "messages": [
-            {
-                "role": "user",
-                "text": prompt,
-            }
-        ],
-    }
-    headers = {
-        "Authorization": f"Api-Key {api_key}",
-        "Content-Type": "application/json",
-    }
+        raise TestCaseGenerationError(
+            "Не задан GEMINI_API_KEY. Укажите ключ Gemini API в переменных окружения."
+        )
 
     try:
-        response = requests.post(api_url, json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise TestCaseGenerationError(f"YandexGPT request failed: {exc}") from exc
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+        )
+    except Exception as exc:
+        raise TestCaseGenerationError(f"Ошибка запроса к Gemini API: {exc}") from exc
 
-    try:
-        data = response.json()
-        return data["result"]["alternatives"][0]["message"]["text"]
-    except (KeyError, IndexError, TypeError, ValueError) as exc:
-        raise TestCaseGenerationError("YandexGPT returned an unexpected response.") from exc
+    text = (getattr(response, "text", None) or "").strip()
+    if not text:
+        raise TestCaseGenerationError("Gemini вернул пустой ответ.")
+
+    return text
 
 
 def parse_test_cases_json(raw_text):
@@ -136,11 +116,14 @@ def parse_test_cases_json(raw_text):
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise TestCaseGenerationError("AI response is not valid JSON.") from exc
+        snippet = raw_text.strip().replace("\n", " ")[:300]
+        raise TestCaseGenerationError(
+            f"Ответ AI не является валидным JSON. Фрагмент ответа: {snippet}"
+        ) from exc
 
     test_cases = data.get("test_cases")
     if not isinstance(test_cases, list):
-        raise TestCaseGenerationError('AI response must contain a "test_cases" list.')
+        raise TestCaseGenerationError('Ответ AI должен содержать список "test_cases".')
 
     return test_cases
 
@@ -148,7 +131,7 @@ def parse_test_cases_json(raw_text):
 def generate_and_save_test_cases(page_schema):
     """Generate test cases with AI and save them to the database."""
     prompt = build_test_case_prompt(page_schema)
-    raw_text = call_yandex_gpt(prompt)
+    raw_text = call_gemini(prompt)
     parsed_test_cases = parse_test_cases_json(raw_text)
     generation_batch = uuid.uuid4()
     created_test_cases = []

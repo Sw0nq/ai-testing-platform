@@ -176,7 +176,7 @@ def page_generate_test_cases(request, pk):
 
     if request.method == "POST":
         if not fields.exists():
-            messages.error(
+            messages.warning(
                 request,
                 "Нельзя сгенерировать тест-кейсы: сначала добавьте поля формы.",
             )
@@ -242,7 +242,7 @@ def test_run_create_view(request, pk):
                 page_id=page.pk,
                 session_id=session.pk,
             )
-        messages.error(request, "Выберите хотя бы один тест-кейс.")
+        messages.warning(request, "Выберите хотя бы один тест-кейс.")
     else:
         form = TestRunSessionCreateForm(page)
 
@@ -296,7 +296,7 @@ def test_run_execute_view(request, page_id, session_id):
                 default=str,
             )
         else:
-            messages.error(request, "Проверьте данные в форме песочницы.")
+            messages.warning(request, "Проверьте данные в форме песочницы.")
 
     if request.method == "POST" and "save_result" in request.POST:
         result = get_object_or_404(
@@ -315,7 +315,7 @@ def test_run_execute_view(request, page_id, session_id):
                 page_id=page.pk,
                 session_id=session.pk,
             )
-        messages.error(request, "Проверьте статус и заметки.")
+        messages.warning(request, "Проверьте статус и заметки.")
 
     results = _sort_results_for_execution(
         list(session.results.select_related("test_case").all())
