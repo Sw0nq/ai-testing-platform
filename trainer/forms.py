@@ -3,6 +3,7 @@ import re
 
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
 
@@ -87,6 +88,11 @@ class FieldSchemaForm(forms.ModelForm):
             "is_required",
             "min_length",
             "max_length",
+            "min_value",
+            "max_value",
+            "min_date",
+            "max_date",
+            "select_options",
             "custom_rules",
             "order",
         )
@@ -97,8 +103,23 @@ class FieldSchemaForm(forms.ModelForm):
             "is_required": "Обязательное поле",
             "min_length": "Минимальная длина",
             "max_length": "Максимальная длина",
+            "min_value": "Минимальное значение",
+            "max_value": "Максимальное значение",
+            "min_date": "Минимальная дата",
+            "max_date": "Максимальная дата",
+            "select_options": "Варианты выбора",
             "custom_rules": "Дополнительные правила",
             "order": "Порядок",
+        }
+        help_texts = {
+            "min_length": "Используется только для текстовых и email-полей.",
+            "max_length": "Используется только для текстовых и email-полей.",
+            "min_value": "Используется только для числовых полей.",
+            "max_value": "Используется только для числовых полей.",
+            "min_date": "Используется только для полей даты.",
+            "max_date": "Используется только для полей даты.",
+            "select_options": "Для выпадающего списка укажите каждый вариант с новой строки.",
+            "custom_rules": "Дополнительные подсказки или правила для тестирования.",
         }
         widgets = {
             "name": forms.TextInput(
@@ -117,6 +138,29 @@ class FieldSchemaForm(forms.ModelForm):
             "is_required": forms.CheckboxInput(attrs={"class": "form-checkbox"}),
             "min_length": forms.NumberInput(attrs={"class": "form-control"}),
             "max_length": forms.NumberInput(attrs={"class": "form-control"}),
+            "min_value": forms.NumberInput(attrs={"class": "form-control"}),
+            "max_value": forms.NumberInput(attrs={"class": "form-control"}),
+            "min_date": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={
+                    "class": "form-control",
+                    "type": "date",
+                }
+            ),
+            "max_date": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={
+                    "class": "form-control",
+                    "type": "date",
+                }
+            ),
+            "select_options": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 5,
+                    "placeholder": "Первый вариант\nВторой вариант",
+                }
+            ),
             "custom_rules": forms.Textarea(
                 attrs={
                     "class": "form-control",
@@ -139,20 +183,78 @@ class FieldSchemaForm(forms.ModelForm):
         field_type = cleaned_data.get("field_type")
         min_length = cleaned_data.get("min_length")
         max_length = cleaned_data.get("max_length")
+        min_value = cleaned_data.get("min_value")
+        max_value = cleaned_data.get("max_value")
+        min_date = cleaned_data.get("min_date")
+        max_date = cleaned_data.get("max_date")
+        select_options = cleaned_data.get("select_options", "")
 
-        if min_length is not None and max_length is not None and min_length > max_length:
-            raise forms.ValidationError(
-                "Минимальная длина не может быть больше максимальной."
+        def ignore_fields(*field_names):
+            for field_name in field_names:
+                cleaned_data[field_name] = "" if field_name == "select_options" else None
+                self._errors.pop(field_name, None)
+
+        if field_type in {FieldSchema.FieldType.TEXT, FieldSchema.FieldType.EMAIL}:
+            if (
+                min_length is not None
+                and max_length is not None
+                and min_length > max_length
+            ):
+                raise forms.ValidationError(
+                    "Минимальная длина не может быть больше максимальной."
+                )
+            ignore_fields(
+                "min_value",
+                "max_value",
+                "min_date",
+                "max_date",
+                "select_options",
             )
 
-        length_fields_are_set = min_length is not None or max_length is not None
-        length_supported_types = {
-            FieldSchema.FieldType.TEXT,
-            FieldSchema.FieldType.EMAIL,
-        }
-        if length_fields_are_set and field_type not in length_supported_types:
-            raise forms.ValidationError(
-                "Ограничения длины можно использовать только для текстовых и email-полей."
+        elif field_type == FieldSchema.FieldType.NUMBER:
+            if min_value is not None and max_value is not None and min_value > max_value:
+                raise forms.ValidationError(
+                    "Минимальное значение не может быть больше максимального."
+                )
+            ignore_fields(
+                "min_length",
+                "max_length",
+                "min_date",
+                "max_date",
+                "select_options",
+            )
+
+        elif field_type == FieldSchema.FieldType.DATE:
+            if min_date is not None and max_date is not None and min_date > max_date:
+                raise forms.ValidationError(
+                    "Минимальная дата не может быть позже максимальной."
+                )
+            ignore_fields(
+                "min_length",
+                "max_length",
+                "min_value",
+                "max_value",
+                "select_options",
+            )
+
+        elif field_type == FieldSchema.FieldType.SELECT:
+            options = [
+                option.strip()
+                for option in select_options.splitlines()
+                if option.strip()
+            ]
+            if len(options) < 2:
+                raise forms.ValidationError(
+                    "Для выпадающего списка нужно указать минимум два варианта."
+                )
+            cleaned_data["select_options"] = "\n".join(options)
+            ignore_fields(
+                "min_length",
+                "max_length",
+                "min_value",
+                "max_value",
+                "min_date",
+                "max_date",
             )
 
         return cleaned_data
@@ -160,12 +262,6 @@ class FieldSchemaForm(forms.ModelForm):
 
 class DynamicSandboxForm(forms.Form):
     """Runtime form generated from FieldSchema objects for a PageSchema."""
-
-    SELECT_CHOICES = (
-        ("option_1", "Option 1"),
-        ("option_2", "Option 2"),
-        ("option_3", "Option 3"),
-    )
 
     def __init__(self, page_schema, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -210,6 +306,8 @@ class DynamicSandboxForm(forms.Form):
         if field_schema.field_type == FieldSchema.FieldType.NUMBER:
             return forms.IntegerField(
                 **common_options,
+                min_value=field_schema.min_value,
+                max_value=field_schema.max_value,
                 widget=forms.NumberInput(attrs={"class": "form-control"}),
             )
 
@@ -222,20 +320,30 @@ class DynamicSandboxForm(forms.Form):
             )
 
         if field_schema.field_type == FieldSchema.FieldType.DATE:
+            validators = []
+            attrs = {
+                "type": "date",
+                "class": "form-control",
+            }
+            if field_schema.min_date:
+                validators.append(MinValueValidator(field_schema.min_date))
+                attrs["min"] = field_schema.min_date.isoformat()
+            if field_schema.max_date:
+                validators.append(MaxValueValidator(field_schema.max_date))
+                attrs["max"] = field_schema.max_date.isoformat()
             return forms.DateField(
                 **common_options,
-                widget=forms.DateInput(
-                    attrs={
-                        "type": "date",
-                        "class": "form-control",
-                    }
-                ),
+                validators=validators,
+                widget=forms.DateInput(attrs=attrs),
             )
 
         if field_schema.field_type == FieldSchema.FieldType.SELECT:
+            choices = [(option, option) for option in field_schema.select_options_list()]
+            if not field_schema.is_required:
+                choices = [("", "---------")] + choices
             return forms.ChoiceField(
                 **common_options,
-                choices=self.SELECT_CHOICES,
+                choices=choices,
                 widget=forms.Select(attrs={"class": "form-control"}),
             )
 

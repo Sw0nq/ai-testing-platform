@@ -46,6 +46,14 @@ class FieldSchema(models.Model):
     is_required = models.BooleanField(default=False)
     min_length = models.PositiveIntegerField(null=True, blank=True)
     max_length = models.PositiveIntegerField(null=True, blank=True)
+    min_value = models.IntegerField(null=True, blank=True)
+    max_value = models.IntegerField(null=True, blank=True)
+    min_date = models.DateField(null=True, blank=True)
+    max_date = models.DateField(null=True, blank=True)
+    select_options = models.TextField(
+        blank=True,
+        help_text="Каждый вариант с новой строки",
+    )
     custom_rules = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0)
 
@@ -54,6 +62,14 @@ class FieldSchema(models.Model):
 
     def __str__(self) -> str:
         return f"{self.page}: {self.label}"
+
+    def select_options_list(self) -> list[str]:
+        """Return non-empty select options preserving user order."""
+        return [
+            option.strip()
+            for option in self.select_options.splitlines()
+            if option.strip()
+        ]
 
 
 class TestCase(models.Model):

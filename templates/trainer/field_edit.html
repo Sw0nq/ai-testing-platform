@@ -3,6 +3,25 @@
 {% block title %}Редактирование поля | AI Testing Platform{% endblock %}
 
 {% block content %}
+    <style>
+        .field-settings-block {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: none;
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .field-settings-block.is-active {
+            display: grid;
+        }
+
+        .field-settings-block h3 {
+            font-size: 18px;
+            margin: 0;
+        }
+    </style>
+
     <section class="page-header">
         <div>
             <h1>Редактирование поля</h1>
@@ -12,20 +31,135 @@
     </section>
 
     <section class="panel">
-        <form method="post" class="form-grid">
+        <form method="post" class="form-grid" data-field-type-form>
             {% csrf_token %}
             {{ form.non_field_errors }}
-            {% for form_field in form %}
+
+            <div class="form-group">
+                {{ form.name.label_tag }}
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.label.label_tag }}
+                {{ form.label }}
+                {{ form.label.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.field_type.label_tag }}
+                {{ form.field_type }}
+                {{ form.field_type.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.is_required.label_tag }}
+                {{ form.is_required }}
+                {{ form.is_required.errors }}
+            </div>
+
+            <div class="field-settings-block" data-field-settings="text,email">
+                <h3>Настройки текста и email</h3>
+                <p class="muted">Ограничения длины применяются только к текстовым и email-полям.</p>
                 <div class="form-group">
-                    {{ form_field.label_tag }}
-                    {{ form_field }}
-                    {{ form_field.errors }}
+                    {{ form.min_length.label_tag }}
+                    {{ form.min_length }}
+                    <span class="helptext">{{ form.min_length.help_text }}</span>
+                    {{ form.min_length.errors }}
                 </div>
-            {% endfor %}
+                <div class="form-group">
+                    {{ form.max_length.label_tag }}
+                    {{ form.max_length }}
+                    <span class="helptext">{{ form.max_length.help_text }}</span>
+                    {{ form.max_length.errors }}
+                </div>
+            </div>
+
+            <div class="field-settings-block" data-field-settings="number">
+                <h3>Настройки числа</h3>
+                <p class="muted">Укажите допустимый диапазон числового значения.</p>
+                <div class="form-group">
+                    {{ form.min_value.label_tag }}
+                    {{ form.min_value }}
+                    <span class="helptext">{{ form.min_value.help_text }}</span>
+                    {{ form.min_value.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.max_value.label_tag }}
+                    {{ form.max_value }}
+                    <span class="helptext">{{ form.max_value.help_text }}</span>
+                    {{ form.max_value.errors }}
+                </div>
+            </div>
+
+            <div class="field-settings-block" data-field-settings="date">
+                <h3>Настройки даты</h3>
+                <p class="muted">Укажите допустимый диапазон дат.</p>
+                <div class="form-group">
+                    {{ form.min_date.label_tag }}
+                    {{ form.min_date }}
+                    <span class="helptext">{{ form.min_date.help_text }}</span>
+                    {{ form.min_date.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.max_date.label_tag }}
+                    {{ form.max_date }}
+                    <span class="helptext">{{ form.max_date.help_text }}</span>
+                    {{ form.max_date.errors }}
+                </div>
+            </div>
+
+            <div class="field-settings-block" data-field-settings="select">
+                <h3>Настройки выпадающего списка</h3>
+                <p class="muted">Добавьте минимум два варианта, каждый с новой строки.</p>
+                <div class="form-group">
+                    {{ form.select_options.label_tag }}
+                    {{ form.select_options }}
+                    <span class="helptext">{{ form.select_options.help_text }}</span>
+                    {{ form.select_options.errors }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form.custom_rules.label_tag }}
+                {{ form.custom_rules }}
+                <span class="helptext">{{ form.custom_rules.help_text }}</span>
+                {{ form.custom_rules.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.order.label_tag }}
+                {{ form.order }}
+                {{ form.order.errors }}
+            </div>
+
             <div class="actions">
                 <button class="button" type="submit">Сохранить поле</button>
                 <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Отмена</a>
             </div>
         </form>
     </section>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll("[data-field-type-form]").forEach((form) => {
+                const typeSelect = form.querySelector("select[name$='field_type']");
+                const blocks = form.querySelectorAll("[data-field-settings]");
+
+                function updateFieldSettings() {
+                    if (!typeSelect) {
+                        return;
+                    }
+                    const fieldType = typeSelect.value;
+                    blocks.forEach((block) => {
+                        const supportedTypes = block.dataset.fieldSettings.split(",");
+                        const isActive = supportedTypes.includes(fieldType);
+                        block.classList.toggle("is-active", isActive);
+                    });
+                }
+
+                if (typeSelect) {
+                    typeSelect.addEventListener("change", updateFieldSettings);
+                    updateFieldSettings();
+                }
+            });
+        });
+    </script>
 {% endblock %}

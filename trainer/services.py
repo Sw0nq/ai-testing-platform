@@ -20,22 +20,56 @@ def build_test_case_prompt(page_schema):
 
     for field in page_schema.fields.order_by("order", "id"):
         rules = field.custom_rules or "нет"
-        min_length = field.min_length if field.min_length is not None else "не указано"
-        max_length = field.max_length if field.max_length is not None else "не указано"
         required = "да" if field.is_required else "нет"
-        field_lines.append(
-            "\n".join(
+        lines = [
+            f"- Имя: {field.name}",
+            f"  Метка: {field.label}",
+            f"  Тип: {field.field_type}",
+            f"  Обязательное: {required}",
+        ]
+
+        if field.field_type in {"text", "email"}:
+            min_length = (
+                field.min_length if field.min_length is not None else "не указано"
+            )
+            max_length = (
+                field.max_length if field.max_length is not None else "не указано"
+            )
+            lines.extend(
                 [
-                    f"- Имя: {field.name}",
-                    f"  Метка: {field.label}",
-                    f"  Тип: {field.field_type}",
-                    f"  Обязательное: {required}",
                     f"  Минимальная длина: {min_length}",
                     f"  Максимальная длина: {max_length}",
-                    f"  Правила: {rules}",
                 ]
             )
-        )
+        elif field.field_type == "number":
+            min_value = (
+                field.min_value if field.min_value is not None else "не указано"
+            )
+            max_value = (
+                field.max_value if field.max_value is not None else "не указано"
+            )
+            lines.extend(
+                [
+                    f"  Минимальное значение: {min_value}",
+                    f"  Максимальное значение: {max_value}",
+                ]
+            )
+        elif field.field_type == "date":
+            min_date = field.min_date.isoformat() if field.min_date else "не указано"
+            max_date = field.max_date.isoformat() if field.max_date else "не указано"
+            lines.extend(
+                [
+                    f"  Минимальная дата: {min_date}",
+                    f"  Максимальная дата: {max_date}",
+                ]
+            )
+        elif field.field_type == "select":
+            options = field.select_options_list()
+            options_text = ", ".join(options) if options else "не указано"
+            lines.append(f"  Разрешенные варианты выбора: {options_text}")
+
+        lines.append(f"  Правила: {rules}")
+        field_lines.append("\n".join(lines))
 
     description = page_schema.description or "Описание не указано."
     fields_text = "\n".join(field_lines)
@@ -54,6 +88,8 @@ def build_test_case_prompt(page_schema):
 - 3 позитивных тест-кейса с "test_type": "positive"
 - 4 негативных тест-кейса с "test_type": "negative"
 - 3 граничных тест-кейса с "test_type": "boundary"
+Для select-полей в позитивных тест-кейсах используй только разрешенные варианты выбора.
+В негативных тест-кейсах можно использовать несуществующее значение select-поля для проверки валидации.
 Верни только строго валидный JSON.
 Не добавляй markdown.
 Не добавляй пояснения.

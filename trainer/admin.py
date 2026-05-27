@@ -30,7 +30,7 @@ class FieldSchemaAdmin(admin.ModelAdmin):
         "order",
     )
     list_filter = ("field_type", "is_required", "page")
-    search_fields = ("name", "label", "page__name", "custom_rules")
+    search_fields = ("name", "label", "page__name", "custom_rules", "select_options")
 
 
 @admin.register(TestCase)
