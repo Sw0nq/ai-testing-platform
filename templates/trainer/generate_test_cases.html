@@ -39,6 +39,34 @@
             margin: 20px 0 0;
             padding-bottom: 8px;
         }
+
+        .generation-status {
+            align-items: center;
+            color: var(--muted);
+            display: none;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .generation-status.is-visible {
+            display: flex;
+        }
+
+        .spinner {
+            animation: spin 0.8s linear infinite;
+            border: 3px solid #bfdbfe;
+            border-radius: 999px;
+            border-top-color: var(--primary);
+            flex: 0 0 auto;
+            height: 22px;
+            width: 22px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <section class="page-header">
@@ -78,9 +106,13 @@
         </section>
 
         <section class="panel">
-            <form method="post">
+            <form method="post" id="generation-form">
                 {% csrf_token %}
-                <button class="button" type="submit">Сгенерировать тест-кейсы</button>
+                <button class="button" id="generation-submit" type="submit">Сгенерировать тест-кейсы</button>
+                <div class="generation-status" id="generation-status" aria-live="polite">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>Gemini анализирует требования формы и генерирует тест-кейсы. Это может занять несколько секунд.</span>
+                </div>
             </form>
 
             {% if generation_batch %}
@@ -128,4 +160,23 @@
             </section>
         {% endif %}
     </div>
+
+    <script>
+        const generationForm = document.getElementById("generation-form");
+        const generationSubmit = document.getElementById("generation-submit");
+        const generationStatus = document.getElementById("generation-status");
+        let generationSubmitted = false;
+
+        generationForm.addEventListener("submit", (event) => {
+            if (generationSubmitted) {
+                event.preventDefault();
+                return;
+            }
+
+            generationSubmitted = true;
+            generationSubmit.disabled = true;
+            generationSubmit.textContent = "Генерация...";
+            generationStatus.classList.add("is-visible");
+        });
+    </script>
 {% endblock %}
