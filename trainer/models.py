@@ -11,6 +11,11 @@ class PageSchema(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     is_public = models.BooleanField(default=False, verbose_name="Публичная форма")
+    bug_mode_enabled = models.BooleanField(
+        default=False,
+        verbose_name="Режим учебных дефектов",
+    )
+    bug_profile = models.JSONField(default=dict, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

@@ -266,9 +266,26 @@ class DynamicSandboxForm(forms.Form):
     def __init__(self, page_schema, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.page_schema = page_schema
+        self._defects_by_field = self._build_defects_by_field()
 
         for field_schema in page_schema.fields.order_by("order", "id"):
             self.fields[field_schema.name] = self._build_field(field_schema)
+
+    def _build_defects_by_field(self):
+        if not self.page_schema.bug_mode_enabled:
+            return {}
+
+        profile = self.page_schema.bug_profile or {}
+        defects_by_field = {}
+        for defect in profile.get("defects", []):
+            field_name = defect.get("field")
+            defect_type = defect.get("type")
+            if field_name and defect_type:
+                defects_by_field.setdefault(field_name, set()).add(defect_type)
+        return defects_by_field
+
+    def _defects_for_field(self, field_schema):
+        return self._defects_by_field.get(field_schema.name, set())
 
     def _is_password_field(self, field_schema):
         field_name = field_schema.name.lower()
@@ -289,33 +306,63 @@ class DynamicSandboxForm(forms.Form):
         return forms.EmailInput(attrs=attrs)
 
     def _build_field(self, field_schema):
+        defects = self._defects_for_field(field_schema)
         common_options = {
             "label": field_schema.label,
-            "required": field_schema.is_required,
+            "required": field_schema.is_required and "ignore_required" not in defects,
             "help_text": field_schema.custom_rules,
         }
 
         if field_schema.field_type == FieldSchema.FieldType.TEXT:
             return forms.CharField(
                 **common_options,
-                min_length=field_schema.min_length,
-                max_length=field_schema.max_length,
+                min_length=(
+                    None
+                    if "ignore_min_length" in defects
+                    else field_schema.min_length
+                ),
+                max_length=(
+                    None
+                    if "ignore_max_length" in defects
+                    else field_schema.max_length
+                ),
                 widget=self._text_widget(field_schema),
             )
 
         if field_schema.field_type == FieldSchema.FieldType.NUMBER:
             return forms.IntegerField(
                 **common_options,
-                min_value=field_schema.min_value,
-                max_value=field_schema.max_value,
+                min_value=(
+                    None
+                    if "ignore_number_min" in defects
+                    else field_schema.min_value
+                ),
+                max_value=(
+                    None
+                    if "ignore_number_max" in defects
+                    else field_schema.max_value
+                ),
                 widget=forms.NumberInput(attrs={"class": "form-control"}),
             )
 
         if field_schema.field_type == FieldSchema.FieldType.EMAIL:
-            return forms.EmailField(
+            field_class = (
+                forms.CharField
+                if "ignore_email_format" in defects
+                else forms.EmailField
+            )
+            return field_class(
                 **common_options,
-                min_length=field_schema.min_length,
-                max_length=field_schema.max_length,
+                min_length=(
+                    None
+                    if "ignore_min_length" in defects
+                    else field_schema.min_length
+                ),
+                max_length=(
+                    None
+                    if "ignore_max_length" in defects
+                    else field_schema.max_length
+                ),
                 widget=self._email_widget(field_schema),
             )
 
@@ -326,10 +373,12 @@ class DynamicSandboxForm(forms.Form):
                 "class": "form-control",
             }
             if field_schema.min_date:
-                validators.append(MinValueValidator(field_schema.min_date))
+                if "ignore_date_min" not in defects:
+                    validators.append(MinValueValidator(field_schema.min_date))
                 attrs["min"] = field_schema.min_date.isoformat()
             if field_schema.max_date:
-                validators.append(MaxValueValidator(field_schema.max_date))
+                if "ignore_date_max" not in defects:
+                    validators.append(MaxValueValidator(field_schema.max_date))
                 attrs["max"] = field_schema.max_date.isoformat()
             return forms.DateField(
                 **common_options,
@@ -341,6 +390,14 @@ class DynamicSandboxForm(forms.Form):
             choices = [(option, option) for option in field_schema.select_options_list()]
             if not field_schema.is_required:
                 choices = [("", "---------")] + choices
+            if "ignore_select_options" in defects:
+                return forms.CharField(
+                    **common_options,
+                    widget=forms.Select(
+                        attrs={"class": "form-control"},
+                        choices=choices,
+                    ),
+                )
             return forms.ChoiceField(
                 **common_options,
                 choices=choices,

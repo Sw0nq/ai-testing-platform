@@ -13,8 +13,14 @@ from .models import (
 
 @admin.register(PageSchema)
 class PageSchemaAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_by", "is_public", "created_at")
-    list_filter = ("is_public", "created_at")
+    list_display = (
+        "name",
+        "created_by",
+        "is_public",
+        "bug_mode_enabled",
+        "created_at",
+    )
+    list_filter = ("is_public", "bug_mode_enabled", "created_at")
     search_fields = ("name", "description", "created_by__username")
     readonly_fields = ("created_at",)
 

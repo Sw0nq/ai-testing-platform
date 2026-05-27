@@ -25,7 +25,12 @@ from .forms import (
     TestRunSessionCreateForm,
 )
 from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
-from .services import TestCaseGenerationError, generate_and_save_test_cases
+from .services import (
+    TestCaseGenerationError,
+    clear_bug_profile,
+    generate_and_save_test_cases,
+    generate_bug_profile,
+)
 
 
 def register_view(request):
@@ -240,7 +245,26 @@ class PageSchemaDetailView(LoginRequiredMixin, DetailView):
 
         context["test_run_sessions"] = sessions
         context["is_owner"] = is_owner
+        context["bug_defects"] = self._get_bug_defects() if is_owner else []
         return context
+
+    def _get_bug_defects(self):
+        profile = self.object.bug_profile or {}
+        fields_by_name = {field.name: field for field in self.object.fields.all()}
+        defects = []
+
+        for defect in profile.get("defects", []):
+            field_name = defect.get("field", "")
+            field = fields_by_name.get(field_name)
+            defects.append(
+                {
+                    "field_name": field_name,
+                    "field_label": field.label if field else field_name,
+                    "description": defect.get("description", ""),
+                }
+            )
+
+        return defects
 
 
 class PageSchemaUpdateView(LoginRequiredMixin, UpdateView):
@@ -452,6 +476,36 @@ def public_form_analytics_view(request, pk):
             ),
         },
     )
+
+
+@login_required
+def enable_bugs_view(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk, created_by=request.user)
+    page.bug_mode_enabled = True
+    page.save(update_fields=["bug_mode_enabled"])
+    generate_bug_profile(page)
+    messages.success(request, "Режим учебных дефектов включен.")
+    return redirect("trainer:page_detail", pk=page.pk)
+
+
+@login_required
+def regenerate_bugs_view(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk, created_by=request.user)
+    page.bug_mode_enabled = True
+    page.save(update_fields=["bug_mode_enabled"])
+    generate_bug_profile(page)
+    messages.success(request, "Учебные дефекты сгенерированы заново.")
+    return redirect("trainer:page_detail", pk=page.pk)
+
+
+@login_required
+def disable_bugs_view(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk, created_by=request.user)
+    page.bug_mode_enabled = False
+    page.save(update_fields=["bug_mode_enabled"])
+    clear_bug_profile(page)
+    messages.info(request, "Режим учебных дефектов отключен.")
+    return redirect("trainer:page_detail", pk=page.pk)
 
 
 def _group_test_cases_by_priority(test_cases):

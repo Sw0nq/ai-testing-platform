@@ -26,6 +26,21 @@ urlpatterns = [
         name="public_form_analytics",
     ),
     path(
+        "pages/<int:pk>/enable-bugs/",
+        views.enable_bugs_view,
+        name="enable_bugs",
+    ),
+    path(
+        "pages/<int:pk>/regenerate-bugs/",
+        views.regenerate_bugs_view,
+        name="regenerate_bugs",
+    ),
+    path(
+        "pages/<int:pk>/disable-bugs/",
+        views.disable_bugs_view,
+        name="disable_bugs",
+    ),
+    path(
         "pages/<int:pk>/test-runs/create/",
         views.test_run_create_view,
         name="test_run_create",
