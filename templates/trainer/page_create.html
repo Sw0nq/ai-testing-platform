@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Create Page | AI Testing Platform{% endblock %}
+{% block title %}Создание страницы | AI Testing Platform{% endblock %}
 
 {% block content %}
     <section class="page-header">
         <div>
-            <h1>Create page</h1>
-            <p class="subtitle">Define a new web form schema for testing practice.</p>
+            <h1>Создать страницу</h1>
+            <p class="subtitle">Опишите новую схему веб-формы для практики тестирования.</p>
         </div>
-        <a class="button secondary" href="{% url 'trainer:page_list' %}">Back to list</a>
+        <a class="button secondary" href="{% url 'trainer:page_list' %}">К списку</a>
     </section>
 
     <section class="panel">
@@ -22,8 +22,8 @@
                 </div>
             {% endfor %}
             <div class="actions">
-                <button class="button" type="submit">Create page</button>
-                <a class="button secondary" href="{% url 'trainer:page_list' %}">Cancel</a>
+                <button class="button" type="submit">Создать страницу</button>
+                <a class="button secondary" href="{% url 'trainer:page_list' %}">Отмена</a>
             </div>
         </form>
     </section>

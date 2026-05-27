@@ -14,6 +14,21 @@
         .session-list {
             display: grid;
             gap: 14px;
+            padding-right: 4px;
+        }
+
+        .test-run-panel {
+            max-height: 650px;
+            overflow-y: auto;
+        }
+
+        .test-run-panel-title {
+            background: var(--surface);
+            margin: 0 0 16px;
+            padding-bottom: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
         .session-card {
@@ -91,8 +106,8 @@
             </dl>
         </section>
 
-        <aside class="panel">
-            <h2 style="margin-top: 0;">Тест-раны этой формы</h2>
+        <aside class="panel test-run-panel">
+            <h2 class="test-run-panel-title">Тест-раны этой формы</h2>
 
             {% if test_run_sessions %}
                 <div class="session-list">
