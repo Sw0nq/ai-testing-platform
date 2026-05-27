@@ -114,35 +114,6 @@ class TestCase(models.Model):
         return self.title
 
 
-class TestRun(models.Model):
-    """A user's execution result for a test case."""
-
-    class Status(models.TextChoices):
-        PASSED = "passed", "Passed"
-        FAILED = "failed", "Failed"
-        SKIPPED = "skipped", "Skipped"
-
-    test_case = models.ForeignKey(
-        TestCase,
-        on_delete=models.CASCADE,
-        related_name="runs",
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="test_runs",
-    )
-    status = models.CharField(max_length=20, choices=Status.choices)
-    notes = models.TextField(blank=True)
-    executed_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-executed_at"]
-
-    def __str__(self) -> str:
-        return f"{self.test_case} - {self.get_status_display()}"
-
-
 class TestRunSession(models.Model):
     """A user-created session containing selected test cases for execution."""
 
