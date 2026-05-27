@@ -7,6 +7,9 @@ from . import views
 app_name = "trainer"
 
 urlpatterns = [
+    path("register/", views.register_view, name="register"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
     path("", views.PageSchemaListView.as_view(), name="page_list"),
     path("pages/create/", views.PageSchemaCreateView.as_view(), name="page_create"),
     path("pages/<int:pk>/", views.PageSchemaDetailView.as_view(), name="page_detail"),

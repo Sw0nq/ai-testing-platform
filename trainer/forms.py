@@ -2,8 +2,45 @@
 import re
 
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
 from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
+
+
+class RegisterForm(UserCreationForm):
+    """Registration form with Russian labels and help text."""
+
+    username = forms.CharField(
+        label="Имя пользователя",
+        help_text="Обязательное поле. Не более 150 символов: буквы, цифры и @/./+/-/_.",
+        widget=forms.TextInput(attrs={"class": "form-control", "autofocus": True}),
+    )
+    password1 = forms.CharField(
+        label="Пароль",
+        help_text="Пароль не должен быть слишком похож на ваши данные, слишком простым или полностью числовым.",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+    )
+    password2 = forms.CharField(
+        label="Подтверждение пароля",
+        help_text="Введите тот же пароль еще раз для проверки.",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+    )
+
+
+class LoginForm(AuthenticationForm):
+    """Login form with Russian labels."""
+
+    username = forms.CharField(
+        label="Имя пользователя",
+        widget=forms.TextInput(attrs={"class": "form-control", "autofocus": True}),
+    )
+    password = forms.CharField(
+        label="Пароль",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control"}),
+    )
 
 
 class PageSchemaForm(forms.ModelForm):

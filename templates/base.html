@@ -65,6 +65,10 @@
             gap: 14px;
         }
 
+        .nav-user {
+            color: var(--muted);
+        }
+
         .nav-button {
             background: none;
             border: 0;
@@ -207,6 +211,22 @@
             gap: 16px;
         }
 
+        .auth-panel {
+            margin: 32px auto 0;
+            max-width: 440px;
+        }
+
+        .auth-panel h1 {
+            font-size: 28px;
+        }
+
+        .helptext {
+            color: var(--muted);
+            display: block;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
         .form-group label {
             display: block;
             font-weight: 700;
@@ -248,12 +268,20 @@
         <div class="navbar-inner">
             <a class="brand" href="{% url 'trainer:page_list' %}">AI Testing Platform</a>
             <div class="nav-links">
-                <a href="{% url 'trainer:page_list' %}">Главная</a>
-                <a href="{% url 'admin:index' %}">Админка</a>
-                <form action="{% url 'admin:logout' %}" method="post">
-                    {% csrf_token %}
-                    <button class="nav-button" type="submit">Выйти</button>
-                </form>
+                {% if user.is_authenticated %}
+                    <span class="nav-user">{{ user.username }}</span>
+                    <a href="{% url 'trainer:page_list' %}">Главная</a>
+                    {% if user.is_staff %}
+                        <a href="{% url 'admin:index' %}">Админка</a>
+                    {% endif %}
+                    <form action="{% url 'trainer:logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="nav-button" type="submit">Выйти</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'trainer:login' %}">Войти</a>
+                    <a href="{% url 'trainer:register' %}">Регистрация</a>
+                {% endif %}
             </div>
         </div>
     </nav>

@@ -3,6 +3,7 @@ from collections import OrderedDict
 import json
 
 from django.contrib import messages
+from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -15,12 +16,58 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from .forms import (
     DynamicSandboxForm,
     FieldSchemaForm,
+    LoginForm,
     PageSchemaForm,
+    RegisterForm,
     TestRunResultForm,
     TestRunSessionCreateForm,
 )
 from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
 from .services import TestCaseGenerationError, generate_and_save_test_cases
+
+
+def register_view(request):
+    """Register a new user and sign them in."""
+    if request.user.is_authenticated:
+        return redirect("trainer:page_list")
+
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            auth_login(request, user)
+            messages.success(request, "Регистрация завершена. Вы вошли в систему.")
+            return redirect("trainer:page_list")
+        messages.warning(request, "Проверьте данные регистрации.")
+    else:
+        form = RegisterForm()
+
+    return render(request, "trainer/register.html", {"form": form})
+
+
+def login_view(request):
+    """Authenticate a user."""
+    if request.user.is_authenticated:
+        return redirect("trainer:page_list")
+
+    if request.method == "POST":
+        form = LoginForm(request, data=request.POST)
+        if form.is_valid():
+            auth_login(request, form.get_user())
+            messages.success(request, "Вы вошли в систему.")
+            return redirect("trainer:page_list")
+        messages.warning(request, "Проверьте имя пользователя и пароль.")
+    else:
+        form = LoginForm(request)
+
+    return render(request, "trainer/login.html", {"form": form})
+
+
+def logout_view(request):
+    """Sign out the current user."""
+    auth_logout(request)
+    messages.info(request, "Вы вышли из системы.")
+    return redirect("trainer:login")
 
 
 class PageSchemaListView(LoginRequiredMixin, ListView):
@@ -36,7 +83,7 @@ class PageSchemaCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        messages.success(self.request, "Page schema created successfully.")
+        messages.success(self.request, "Страница успешно создана.")
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -152,7 +199,7 @@ class PageSchemaDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy("trainer:page_list")
 
     def form_valid(self, form):
-        messages.success(self.request, "Page schema deleted successfully.")
+        messages.success(self.request, "Страница успешно удалена.")
         return super().form_valid(form)
 
 
