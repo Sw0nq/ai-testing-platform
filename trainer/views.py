@@ -72,6 +72,92 @@ def logout_view(request):
     return redirect("trainer:login")
 
 
+@login_required
+def user_stats_view(request):
+    """Show personal statistics for the current user's test-run sessions."""
+    sessions = (
+        TestRunSession.objects.filter(user=request.user)
+        .select_related("page", "page__created_by")
+        .prefetch_related("results")
+        .order_by("page__name", "-created_at")
+    )
+
+    summary = {
+        "total_sessions": 0,
+        "total_results": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0,
+        "completion_percentage": 0,
+        "success_percentage": 0,
+    }
+    page_rows = {}
+
+    for session in sessions:
+        page = session.page
+        summary["total_sessions"] += 1
+        row = page_rows.setdefault(
+            page.pk,
+            {
+                "page": page,
+                "author": page.created_by.username,
+                "form_type": (
+                    "Моя" if page.created_by_id == request.user.id else "Публичная"
+                ),
+                "sessions_count": 0,
+                "total_results": 0,
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "not_run": 0,
+                "last_session": session.created_at,
+            },
+        )
+        row["sessions_count"] += 1
+        if session.created_at > row["last_session"]:
+            row["last_session"] = session.created_at
+
+        for result in session.results.all():
+            summary["total_results"] += 1
+            row["total_results"] += 1
+
+            if result.status == TestRunResult.Status.PASSED:
+                summary["passed"] += 1
+                row["passed"] += 1
+            elif result.status == TestRunResult.Status.FAILED:
+                summary["failed"] += 1
+                row["failed"] += 1
+            elif result.status == TestRunResult.Status.SKIPPED:
+                summary["skipped"] += 1
+                row["skipped"] += 1
+            else:
+                summary["not_run"] += 1
+                row["not_run"] += 1
+
+    completed_count = summary["passed"] + summary["failed"] + summary["skipped"]
+    if summary["total_results"]:
+        summary["completion_percentage"] = round(
+            (completed_count / summary["total_results"]) * 100
+        )
+    if completed_count:
+        summary["success_percentage"] = round(
+            (summary["passed"] / completed_count) * 100
+        )
+
+    return render(
+        request,
+        "trainer/user_stats.html",
+        {
+            "summary": summary,
+            "page_rows": sorted(
+                page_rows.values(),
+                key=lambda row: row["page"].name.lower(),
+            ),
+        },
+    )
+
+
 class PageSchemaListView(LoginRequiredMixin, ListView):
     model = PageSchema
     template_name = "trainer/page_list.html"

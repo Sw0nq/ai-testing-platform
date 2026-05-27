@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Моя статистика | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .stats-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-bottom: 20px;
+        }
+
+        .stats-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .stats-card span {
+            color: var(--muted);
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .stats-card strong {
+            display: block;
+            font-size: 26px;
+            line-height: 1.2;
+        }
+
+        .empty-state {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>Моя статистика</h1>
+            <p class="subtitle">Личная статистика по вашим тест-ранам и проверкам тест-кейсов.</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_list' %}">Назад</a>
+    </section>
+
+    {% if summary.total_sessions %}
+        <section class="stats-grid">
+            <div class="stats-card">
+                <span>Всего тест-ранов</span>
+                <strong>{{ summary.total_sessions }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Всего проверок тест-кейсов</span>
+                <strong>{{ summary.total_results }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Пройдено тест-кейсов</span>
+                <strong>{{ summary.passed }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Провалено тест-кейсов</span>
+                <strong>{{ summary.failed }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Пропущено тест-кейсов</span>
+                <strong>{{ summary.skipped }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Не выполнено тест-кейсов</span>
+                <strong>{{ summary.not_run }}</strong>
+            </div>
+            <div class="stats-card">
+                <span>Процент выполненных проверок</span>
+                <strong>{{ summary.completion_percentage }}%</strong>
+            </div>
+            <div class="stats-card">
+                <span>Процент успешных проверок</span>
+                <strong>{{ summary.success_percentage }}%</strong>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 style="margin-top: 0;">Статистика по формам</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Название формы</th>
+                        <th>Автор формы</th>
+                        <th>Тип формы</th>
+                        <th>Количество тест-ранов</th>
+                        <th>Всего проверок тест-кейсов</th>
+                        <th>Пройдено</th>
+                        <th>Провалено</th>
+                        <th>Пропущено</th>
+                        <th>Не выполнено</th>
+                        <th>Последний тест-ран</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in page_rows %}
+                        <tr>
+                            <td>{{ row.page.name }}</td>
+                            <td>{{ row.author }}</td>
+                            <td>{{ row.form_type }}</td>
+                            <td>{{ row.sessions_count }}</td>
+                            <td>{{ row.total_results }}</td>
+                            <td>{{ row.passed }}</td>
+                            <td>{{ row.failed }}</td>
+                            <td>{{ row.skipped }}</td>
+                            <td>{{ row.not_run }}</td>
+                            <td>{{ row.last_session|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <a class="button" href="{% url 'trainer:page_detail' row.page.pk %}">Открыть форму</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        <section class="panel">
+            <p class="empty-state">У вас пока нет тест-ранов. Создайте тест-ран на своей или публичной форме, чтобы здесь появилась статистика.</p>
+        </section>
+    {% endif %}
+{% endblock %}

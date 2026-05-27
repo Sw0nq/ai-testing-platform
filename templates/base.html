@@ -271,6 +271,7 @@
                 {% if user.is_authenticated %}
                     <span class="nav-user">{{ user.username }}</span>
                     <a href="{% url 'trainer:page_list' %}">Главная</a>
+                    <a href="{% url 'trainer:user_stats' %}">Моя статистика</a>
                     {% if user.is_staff %}
                         <a href="{% url 'admin:index' %}">Админка</a>
                     {% endif %}

@@ -11,6 +11,16 @@
             grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr);
         }
 
+        .sandbox-panel {
+            align-self: start;
+        }
+
+        .results-panel {
+            align-self: start;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+        }
+
         .result-list {
             display: grid;
             gap: 16px;
@@ -66,6 +76,11 @@
             .execute-layout {
                 grid-template-columns: 1fr;
             }
+
+            .results-panel {
+                max-height: none;
+                overflow-y: visible;
+            }
         }
     </style>
 
@@ -81,7 +96,7 @@
     </section>
 
     <div class="execute-layout">
-        <section class="panel">
+        <section class="panel sandbox-panel">
             <h2 style="margin-top: 0;">Песочница</h2>
             <p class="muted">{{ page.description|default:"Описание не указано." }}</p>
 
@@ -112,7 +127,7 @@
             {% endif %}
         </section>
 
-        <section class="panel">
+        <section class="panel results-panel">
             <h2 style="margin-top: 0;">Тест-кейсы</h2>
             <div class="result-list">
                 {% for result in results %}
