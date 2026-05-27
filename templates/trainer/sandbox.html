@@ -36,7 +36,10 @@
             <h1>Песочница: {{ page.name }}</h1>
             <p class="sandbox-description">{{ page.description|default:"Описание не указано." }}</p>
         </div>
-        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+        <div class="actions">
+            <a class="button" href="{% url 'trainer:test_run_create' page.pk %}">К прогону тестов</a>
+            <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+        </div>
     </section>
 
     <div class="sandbox-layout">

@@ -1,7 +1,14 @@
 """Admin configuration for the trainer app."""
 from django.contrib import admin
 
-from .models import FieldSchema, PageSchema, TestCase, TestRun
+from .models import (
+    FieldSchema,
+    PageSchema,
+    TestCase,
+    TestRun,
+    TestRunResult,
+    TestRunSession,
+)
 
 
 @admin.register(PageSchema)
@@ -47,3 +54,23 @@ class TestRunAdmin(admin.ModelAdmin):
     list_filter = ("status", "executed_at")
     search_fields = ("test_case__title", "user__username", "notes")
     readonly_fields = ("executed_at",)
+
+
+@admin.register(TestRunSession)
+class TestRunSessionAdmin(admin.ModelAdmin):
+    list_display = ("title", "page", "user", "created_at", "completed_at")
+    list_filter = ("created_at", "completed_at", "page")
+    search_fields = ("title", "page__name", "user__username")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(TestRunResult)
+class TestRunResultAdmin(admin.ModelAdmin):
+    list_display = ("session", "test_case", "status", "executed_at")
+    list_filter = ("status", "executed_at", "session__page")
+    search_fields = (
+        "session__title",
+        "session__page__name",
+        "test_case__title",
+        "notes",
+    )

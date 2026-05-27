@@ -3,6 +3,63 @@
 {% block title %}{{ page.name }} | AI Testing Platform{% endblock %}
 
 {% block content %}
+    <style>
+        .detail-layout {
+            align-items: start;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+        }
+
+        .session-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .session-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .session-card h3 {
+            font-size: 18px;
+            margin: 0 0 6px;
+        }
+
+        .stats-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin: 12px 0;
+        }
+
+        .stat-item {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .progress-bar {
+            background: #e5e7eb;
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: var(--primary);
+            height: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .detail-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
     <section class="page-header">
         <div>
             <h1>{{ page.name }}</h1>
@@ -11,24 +68,61 @@
         <div class="actions">
             <a class="button" href="{% url 'trainer:sandbox' page.pk %}">Открыть песочницу</a>
             <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI генерация тест-кейсов</a>
+            <a class="button" href="{% url 'trainer:test_run_create' page.pk %}">Создать тест-ран</a>
             <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Редактировать</a>
             <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Удалить</a>
         </div>
     </section>
 
-    <section class="panel">
-        <dl class="details">
-            <dt>Название</dt>
-            <dd>{{ page.name }}</dd>
+    <div class="detail-layout">
+        <section class="panel">
+            <dl class="details">
+                <dt>Название</dt>
+                <dd>{{ page.name }}</dd>
 
-            <dt>Описание</dt>
-            <dd>{{ page.description|default:"Описание не указано" }}</dd>
+                <dt>Описание</dt>
+                <dd>{{ page.description|default:"Описание не указано" }}</dd>
 
-            <dt>Автор</dt>
-            <dd>{{ page.created_by }}</dd>
+                <dt>Автор</dt>
+                <dd>{{ page.created_by }}</dd>
 
-            <dt>Дата создания</dt>
-            <dd>{{ page.created_at|date:"Y-m-d H:i" }}</dd>
-        </dl>
-    </section>
+                <dt>Дата создания</dt>
+                <dd>{{ page.created_at|date:"Y-m-d H:i" }}</dd>
+            </dl>
+        </section>
+
+        <aside class="panel">
+            <h2 style="margin-top: 0;">Тест-раны этой формы</h2>
+
+            {% if test_run_sessions %}
+                <div class="session-list">
+                    {% for session_data in test_run_sessions %}
+                        <article class="session-card">
+                            <h3>{{ session_data.display_title }}</h3>
+                            <p class="muted">{{ session_data.object.created_at|date:"Y-m-d H:i" }}</p>
+
+                            <div class="stats-grid">
+                                <div class="stat-item">Всего: {{ session_data.total_count }}</div>
+                                <div class="stat-item">Пройдено: {{ session_data.passed_count }}</div>
+                                <div class="stat-item">Провалено: {{ session_data.failed_count }}</div>
+                                <div class="stat-item">Пропущено: {{ session_data.skipped_count }}</div>
+                                <div class="stat-item">Не выполнено: {{ session_data.not_run_count }}</div>
+                                <div class="stat-item">Прогресс: {{ session_data.progress }}%</div>
+                            </div>
+
+                            <div class="progress-bar" aria-label="Прогресс тест-рана">
+                                <div class="progress-fill" style="width: {{ session_data.progress }}%;"></div>
+                            </div>
+
+                            <div class="actions" style="margin-top: 12px;">
+                                <a class="button" href="{% url 'trainer:test_run_execute' page.pk session_data.object.pk %}">Продолжить</a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="muted">Пока нет созданных тест-ранов.</p>
+            {% endif %}
+        </aside>
+    </div>
 {% endblock %}

@@ -3,7 +3,7 @@ import re
 
 from django import forms
 
-from .models import FieldSchema, PageSchema
+from .models import FieldSchema, PageSchema, TestCase, TestRun, TestRunResult, TestRunSession
 
 
 class PageSchemaForm(forms.ModelForm):
@@ -201,3 +201,94 @@ class DynamicSandboxForm(forms.Form):
             **common_options,
             widget=self._text_widget(field_schema),
         )
+
+
+class TestRunForm(forms.ModelForm):
+    """Form for saving a manual test run result."""
+
+    class Meta:
+        model = TestRun
+        fields = ("status", "notes")
+        labels = {
+            "status": "Статус",
+            "notes": "Заметки",
+        }
+
+
+class TestRunSessionCreateForm(forms.ModelForm):
+    """Form for creating a test run session from selected test cases."""
+
+    selected_test_cases = forms.ModelMultipleChoiceField(
+        queryset=TestCase.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        label="Тест-кейсы",
+        required=True,
+        error_messages={
+            "required": "Выберите хотя бы один тест-кейс.",
+        },
+    )
+
+    class Meta:
+        model = TestRunSession
+        fields = ("title", "selected_test_cases")
+        labels = {
+            "title": "Название тест-рана",
+        }
+        widgets = {
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Например: Регрессия формы регистрации",
+                }
+            ),
+        }
+
+    def __init__(self, page_schema, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.page_schema = page_schema
+        self.fields["selected_test_cases"].queryset = page_schema.test_cases.order_by(
+            "priority",
+            "-created_at",
+            "id",
+        )
+
+
+class TestRunResultForm(forms.ModelForm):
+    """Form for updating a test run result."""
+
+    STATUS_CHOICES = (
+        (TestRunResult.Status.NOT_RUN, "Не выполнен"),
+        (TestRunResult.Status.PASSED, "Пройден"),
+        (TestRunResult.Status.FAILED, "Провален"),
+        (TestRunResult.Status.SKIPPED, "Пропущен"),
+    )
+
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        label="Статус",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    class Meta:
+        model = TestRunResult
+        fields = ("status", "notes")
+        labels = {
+            "notes": "Заметки",
+        }
+        widgets = {
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                }
+            ),
+        }
+        widgets = {
+            "status": forms.Select(attrs={"class": "form-control"}),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                }
+            ),
+        }

@@ -119,3 +119,61 @@ class TestRun(models.Model):
 
     def __str__(self) -> str:
         return f"{self.test_case} - {self.get_status_display()}"
+
+
+class TestRunSession(models.Model):
+    """A user-created session containing selected test cases for execution."""
+
+    page = models.ForeignKey(
+        PageSchema,
+        on_delete=models.CASCADE,
+        related_name="test_run_sessions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="test_run_sessions",
+    )
+    title = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.title or f"{self.page} - {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class TestRunResult(models.Model):
+    """Execution result for a selected test case inside a run session."""
+
+    class Status(models.TextChoices):
+        NOT_RUN = "not_run", "Not run"
+        PASSED = "passed", "Passed"
+        FAILED = "failed", "Failed"
+        SKIPPED = "skipped", "Skipped"
+
+    session = models.ForeignKey(
+        TestRunSession,
+        on_delete=models.CASCADE,
+        related_name="results",
+    )
+    test_case = models.ForeignKey(
+        TestCase,
+        on_delete=models.CASCADE,
+        related_name="run_results",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.NOT_RUN,
+    )
+    notes = models.TextField(blank=True)
+    executed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["session", "test_case__priority", "test_case_id"]
+
+    def __str__(self) -> str:
+        return f"{self.session} - {self.test_case}"

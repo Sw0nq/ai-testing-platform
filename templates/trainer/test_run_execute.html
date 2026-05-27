@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Выполнение тест-рана | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .execute-layout {
+            align-items: start;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr);
+        }
+
+        .result-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .result-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .result-meta {
+            color: var(--muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .json-value {
+            background: #111827;
+            border-radius: 6px;
+            color: #e5e7eb;
+            overflow-x: auto;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+
+        .sandbox-help {
+            color: var(--muted);
+            display: block;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .submitted-data {
+            background: #111827;
+            border-radius: 8px;
+            color: #e5e7eb;
+            overflow-x: auto;
+            padding: 16px;
+            white-space: pre-wrap;
+        }
+
+        .status-pill {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            display: inline-block;
+            padding: 4px 10px;
+        }
+
+        @media (max-width: 980px) {
+            .execute-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>Выполнение тест-рана</h1>
+            <p class="subtitle">{{ session.title|default:page.name }}</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{% url 'trainer:test_run_create' page.pk %}">Новый тест-ран</a>
+            <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+        </div>
+    </section>
+
+    <div class="execute-layout">
+        <section class="panel">
+            <h2 style="margin-top: 0;">Песочница</h2>
+            <p class="muted">{{ page.description|default:"Описание не указано." }}</p>
+
+            <form method="post" class="form-grid">
+                {% csrf_token %}
+                {{ sandbox_form.non_field_errors }}
+
+                {% if sandbox_form.fields %}
+                    {% for field in sandbox_form %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <span class="sandbox-help">{{ field.help_text }}</span>
+                            {% endif %}
+                            {{ field.errors }}
+                        </div>
+                    {% endfor %}
+                    <button class="button" type="submit" name="submit_sandbox">Отправить форму</button>
+                {% else %}
+                    <p class="muted">Для этой страницы пока не настроены поля.</p>
+                {% endif %}
+            </form>
+
+            {% if submitted_data %}
+                <h3>Данные песочницы</h3>
+                <pre class="submitted-data">{{ submitted_data }}</pre>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2 style="margin-top: 0;">Тест-кейсы</h2>
+            <div class="result-list">
+                {% for result in results %}
+                    <article class="result-card">
+                        <h3 style="margin-top: 0;">{{ result.test_case.title }}</h3>
+                        <div class="result-meta">
+                            <span>Тип: {{ result.test_case.get_test_type_display }}</span>
+                            <span>Приоритет: {{ result.test_case.get_priority_display }}</span>
+                            <span>
+                                Текущий статус:
+                                <span class="status-pill">
+                                    {% if result.status == "not_run" %}Не выполнен{% endif %}
+                                    {% if result.status == "passed" %}Пройден{% endif %}
+                                    {% if result.status == "failed" %}Провален{% endif %}
+                                    {% if result.status == "skipped" %}Пропущен{% endif %}
+                                </span>
+                            </span>
+                        </div>
+
+                        <p><strong>Входные данные</strong></p>
+                        <pre class="json-value">{{ result.test_case.input_data }}</pre>
+
+                        <p><strong>Ожидаемый результат</strong></p>
+                        <p>{{ result.test_case.expected_result }}</p>
+
+                        <form method="post" class="form-grid">
+                            {% csrf_token %}
+                            <input type="hidden" name="result_id" value="{{ result.pk }}">
+
+                            <div class="form-group">
+                                <label for="status-{{ result.pk }}">Статус</label>
+                                <select class="form-control" id="status-{{ result.pk }}" name="status">
+                                    {% for value, label in result_form.status.field.choices %}
+                                        <option value="{{ value }}" {% if value == result.status %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notes-{{ result.pk }}">Заметки</label>
+                                <textarea class="form-control" id="notes-{{ result.pk }}" name="notes" rows="3">{{ result.notes }}</textarea>
+                            </div>
+
+                            <button class="button" type="submit" name="save_result">Сохранить результат</button>
+                        </form>
+                    </article>
+                {% empty %}
+                    <p class="muted">В этом тест-ране нет выбранных тест-кейсов.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+{% endblock %}

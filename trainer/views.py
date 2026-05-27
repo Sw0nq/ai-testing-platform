@@ -5,13 +5,21 @@ import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from .forms import DynamicSandboxForm, FieldSchemaForm, PageSchemaForm
-from .models import FieldSchema, PageSchema
+from .forms import (
+    DynamicSandboxForm,
+    FieldSchemaForm,
+    PageSchemaForm,
+    TestRunResultForm,
+    TestRunSessionCreateForm,
+)
+from .models import FieldSchema, PageSchema, TestCase, TestRunResult, TestRunSession
 from .services import TestCaseGenerationError, generate_and_save_test_cases
 
 
@@ -39,6 +47,42 @@ class PageSchemaDetailView(LoginRequiredMixin, DetailView):
     model = PageSchema
     template_name = "trainer/page_detail.html"
     context_object_name = "page"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        sessions = []
+        queryset = (
+            self.object.test_run_sessions.select_related("user")
+            .prefetch_related("results")
+            .order_by("-created_at")
+        )
+
+        for session in queryset:
+            results = list(session.results.all())
+            total_count = len(results)
+            passed_count = sum(1 for result in results if result.status == "passed")
+            failed_count = sum(1 for result in results if result.status == "failed")
+            skipped_count = sum(1 for result in results if result.status == "skipped")
+            not_run_count = sum(1 for result in results if result.status == "not_run")
+            completed_count = total_count - not_run_count
+            progress = round((completed_count / total_count) * 100) if total_count else 0
+
+            sessions.append(
+                {
+                    "object": session,
+                    "display_title": session.title
+                    or f"Тест-ран от {session.created_at:%Y-%m-%d %H:%M}",
+                    "total_count": total_count,
+                    "passed_count": passed_count,
+                    "failed_count": failed_count,
+                    "skipped_count": skipped_count,
+                    "not_run_count": not_run_count,
+                    "progress": progress,
+                }
+            )
+
+        context["test_run_sessions"] = sessions
+        return context
 
 
 class PageSchemaUpdateView(LoginRequiredMixin, UpdateView):
@@ -157,6 +201,136 @@ def page_generate_test_cases(request, pk):
             "generated_test_cases": generated_test_cases,
             "generation_batch": generation_batch,
             "test_case_groups": _get_test_case_groups(page),
+        },
+    )
+
+
+def _group_test_cases_by_priority(test_cases):
+    return {
+        "high": [test_case for test_case in test_cases if test_case.priority == "high"],
+        "medium": [
+            test_case for test_case in test_cases if test_case.priority == "medium"
+        ],
+        "low": [test_case for test_case in test_cases if test_case.priority == "low"],
+    }
+
+
+@login_required
+def test_run_create_view(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk)
+    test_cases = list(page.test_cases.order_by("priority", "-created_at", "id"))
+
+    if request.method == "POST":
+        form = TestRunSessionCreateForm(page, request.POST)
+        if form.is_valid():
+            selected_test_cases = form.cleaned_data["selected_test_cases"]
+            with transaction.atomic():
+                session = form.save(commit=False)
+                session.page = page
+                session.user = request.user
+                session.save()
+                for test_case in selected_test_cases:
+                    TestRunResult.objects.create(
+                        session=session,
+                        test_case=test_case,
+                        status=TestRunResult.Status.NOT_RUN,
+                    )
+
+            messages.success(request, "Тест-ран создан.")
+            return redirect(
+                "trainer:test_run_execute",
+                page_id=page.pk,
+                session_id=session.pk,
+            )
+        messages.error(request, "Выберите хотя бы один тест-кейс.")
+    else:
+        form = TestRunSessionCreateForm(page)
+
+    return render(
+        request,
+        "trainer/test_run_create.html",
+        {
+            "page": page,
+            "test_cases": test_cases,
+            "grouped_test_cases": _group_test_cases_by_priority(test_cases),
+            "form": form,
+        },
+    )
+
+
+def _sort_results_for_execution(results):
+    priority_order = {
+        TestCase.Priority.HIGH: 0,
+        TestCase.Priority.MEDIUM: 1,
+        TestCase.Priority.LOW: 2,
+    }
+    return sorted(
+        results,
+        key=lambda result: (
+            priority_order.get(result.test_case.priority, 99),
+            result.test_case_id,
+        ),
+    )
+
+
+@login_required
+def test_run_execute_view(request, page_id, session_id):
+    page = get_object_or_404(PageSchema, pk=page_id)
+    session = get_object_or_404(
+        TestRunSession,
+        pk=session_id,
+        page=page,
+        user=request.user,
+    )
+    submitted_data = None
+    sandbox_form = DynamicSandboxForm(page_schema=page)
+
+    if request.method == "POST" and "submit_sandbox" in request.POST:
+        sandbox_form = DynamicSandboxForm(page_schema=page, data=request.POST)
+        if sandbox_form.is_valid():
+            messages.success(request, "Форма песочницы успешно отправлена.")
+            submitted_data = json.dumps(
+                sandbox_form.cleaned_data,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+        else:
+            messages.error(request, "Проверьте данные в форме песочницы.")
+
+    if request.method == "POST" and "save_result" in request.POST:
+        result = get_object_or_404(
+            TestRunResult,
+            pk=request.POST.get("result_id"),
+            session=session,
+        )
+        result_form = TestRunResultForm(request.POST, instance=result)
+        if result_form.is_valid():
+            result = result_form.save(commit=False)
+            result.executed_at = timezone.now()
+            result.save()
+            messages.success(request, "Результат тест-кейса сохранен.")
+            return redirect(
+                "trainer:test_run_execute",
+                page_id=page.pk,
+                session_id=session.pk,
+            )
+        messages.error(request, "Проверьте статус и заметки.")
+
+    results = _sort_results_for_execution(
+        list(session.results.select_related("test_case").all())
+    )
+
+    return render(
+        request,
+        "trainer/test_run_execute.html",
+        {
+            "page": page,
+            "session": session,
+            "sandbox_form": sandbox_form,
+            "submitted_data": submitted_data,
+            "results": results,
+            "result_form": TestRunResultForm(),
         },
     )
 

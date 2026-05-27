@@ -16,6 +16,16 @@ urlpatterns = [
         views.page_generate_test_cases,
         name="page_generate_test_cases",
     ),
+    path(
+        "pages/<int:pk>/test-runs/create/",
+        views.test_run_create_view,
+        name="test_run_create",
+    ),
+    path(
+        "pages/<int:page_id>/test-runs/<int:session_id>/",
+        views.test_run_execute_view,
+        name="test_run_execute",
+    ),
     path("pages/<int:pk>/edit/", views.PageSchemaUpdateView.as_view(), name="page_edit"),
     path("pages/<int:pk>/delete/", views.PageSchemaDeleteView.as_view(), name="page_delete"),
     path(

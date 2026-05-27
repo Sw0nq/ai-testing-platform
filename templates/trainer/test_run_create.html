@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Создать тест-ран | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .create-run-layout {
+            display: grid;
+            gap: 20px;
+        }
+
+        .priority-group {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 16px;
+            padding: 16px;
+        }
+
+        .priority-group h2 {
+            font-size: 20px;
+            margin: 0 0 12px;
+        }
+
+        .case-option {
+            align-items: flex-start;
+            border-top: 1px solid var(--border);
+            display: grid;
+            gap: 8px;
+            grid-template-columns: auto minmax(0, 1fr);
+            padding: 12px 0;
+        }
+
+        .case-option:first-of-type {
+            border-top: 0;
+        }
+
+        .case-option input {
+            margin-top: 5px;
+        }
+
+        .case-title {
+            font-weight: 700;
+        }
+
+        .selection-summary {
+            color: var(--muted);
+            margin-top: 10px;
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>Создать тест-ран</h1>
+            <p class="subtitle">{{ page.name }}</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI-генерация</a>
+            <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+        </div>
+    </section>
+
+    <div class="create-run-layout">
+        {% if test_cases %}
+            <section class="panel">
+                <form method="post" id="test-run-create-form">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                        {{ form.title.label_tag }}
+                        {{ form.title }}
+                        {{ form.title.errors }}
+                    </div>
+
+                    {{ form.selected_test_cases.errors }}
+
+                    <div class="priority-group">
+                        <h2>Высокий приоритет</h2>
+                        {% for test_case in grouped_test_cases.high %}
+                            <label class="case-option">
+                                <input type="checkbox" name="selected_test_cases" value="{{ test_case.pk }}">
+                                <span>
+                                    <span class="case-title">{{ test_case.title }}</span>
+                                    <span class="muted"> / {{ test_case.get_test_type_display }} / {{ test_case.created_at|date:"Y-m-d H:i" }}</span>
+                                </span>
+                            </label>
+                        {% empty %}
+                            <p class="muted">Нет тест-кейсов высокого приоритета.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="priority-group">
+                        <h2>Средний приоритет</h2>
+                        {% for test_case in grouped_test_cases.medium %}
+                            <label class="case-option">
+                                <input type="checkbox" name="selected_test_cases" value="{{ test_case.pk }}">
+                                <span>
+                                    <span class="case-title">{{ test_case.title }}</span>
+                                    <span class="muted"> / {{ test_case.get_test_type_display }} / {{ test_case.created_at|date:"Y-m-d H:i" }}</span>
+                                </span>
+                            </label>
+                        {% empty %}
+                            <p class="muted">Нет тест-кейсов среднего приоритета.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="priority-group">
+                        <h2>Низкий приоритет</h2>
+                        {% for test_case in grouped_test_cases.low %}
+                            <label class="case-option">
+                                <input type="checkbox" name="selected_test_cases" value="{{ test_case.pk }}">
+                                <span>
+                                    <span class="case-title">{{ test_case.title }}</span>
+                                    <span class="muted"> / {{ test_case.get_test_type_display }} / {{ test_case.created_at|date:"Y-m-d H:i" }}</span>
+                                </span>
+                            </label>
+                        {% empty %}
+                            <p class="muted">Нет тест-кейсов низкого приоритета.</p>
+                        {% endfor %}
+                    </div>
+
+                    <p class="selection-summary">Выбрано тест-кейсов: <span id="selected-count">0</span></p>
+
+                    <div class="actions">
+                        <button class="button" id="create-run-button" type="submit" disabled>Создать тест-ран</button>
+                    </div>
+                </form>
+            </section>
+        {% else %}
+            <section class="panel">
+                <p>Для этой страницы пока нет тест-кейсов. Сначала выполните AI-генерацию.</p>
+                <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">Перейти к AI-генерации</a>
+            </section>
+        {% endif %}
+    </div>
+
+    <script>
+        const checkboxes = document.querySelectorAll('input[name="selected_test_cases"]');
+        const createButton = document.getElementById("create-run-button");
+        const selectedCount = document.getElementById("selected-count");
+
+        function updateSelectionState() {
+            const count = Array.from(checkboxes).filter((checkbox) => checkbox.checked).length;
+            selectedCount.textContent = count;
+            createButton.disabled = count === 0;
+        }
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", updateSelectionState);
+        });
+        updateSelectionState();
+    </script>
+{% endblock %}
