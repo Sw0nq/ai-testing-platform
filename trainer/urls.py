@@ -20,6 +20,11 @@ urlpatterns = [
         name="page_generate_test_cases",
     ),
     path(
+        "pages/<int:pk>/public-analytics/",
+        views.public_form_analytics_view,
+        name="public_form_analytics",
+    ),
+    path(
         "pages/<int:pk>/test-runs/create/",
         views.test_run_create_view,
         name="test_run_create",

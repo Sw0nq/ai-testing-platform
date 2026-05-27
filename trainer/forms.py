@@ -48,10 +48,14 @@ class PageSchemaForm(forms.ModelForm):
 
     class Meta:
         model = PageSchema
-        fields = ("name", "description")
+        fields = ("name", "description", "is_public")
         labels = {
             "name": "Название страницы",
             "description": "Описание",
+            "is_public": "Сделать форму публичной для практики другими пользователями",
+        }
+        help_texts = {
+            "is_public": "Другие пользователи смогут проходить форму, но не смогут её редактировать.",
         }
         widgets = {
             "name": forms.TextInput(
@@ -67,6 +71,7 @@ class PageSchemaForm(forms.ModelForm):
                     "rows": 5,
                 }
             ),
+            "is_public": forms.CheckboxInput(attrs={"class": "form-checkbox"}),
         }
 
 

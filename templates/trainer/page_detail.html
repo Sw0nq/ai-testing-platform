@@ -14,21 +14,15 @@
         .session-list {
             display: grid;
             gap: 14px;
-            padding-right: 4px;
-        }
-
-        .test-run-panel {
-            max-height: 650px;
+            max-height: 570px;
             overflow-y: auto;
+            padding-right: 4px;
         }
 
         .test-run-panel-title {
             background: var(--surface);
-            margin: 0 0 16px;
-            padding-bottom: 10px;
-            position: sticky;
-            top: 0;
-            z-index: 1;
+            margin: 0 0 14px;
+            padding-bottom: 12px;
         }
 
         .session-card {
@@ -68,6 +62,15 @@
             height: 100%;
         }
 
+        .visibility-pill {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: var(--muted);
+            display: inline-block;
+            font-size: 14px;
+            padding: 4px 10px;
+        }
+
         @media (max-width: 900px) {
             .detail-layout {
                 grid-template-columns: 1fr;
@@ -82,10 +85,15 @@
         </div>
         <div class="actions">
             <a class="button" href="{% url 'trainer:sandbox' page.pk %}">Открыть песочницу</a>
-            <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI генерация тест-кейсов</a>
             <a class="button" href="{% url 'trainer:test_run_create' page.pk %}">Создать тест-ран</a>
-            <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Редактировать</a>
-            <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Удалить</a>
+            {% if is_owner %}
+                <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI генерация тест-кейсов</a>
+                {% if page.is_public %}
+                    <a class="button" href="{% url 'trainer:public_form_analytics' page.pk %}">Аналитика публичной формы</a>
+                {% endif %}
+                <a class="button" href="{% url 'trainer:page_edit' page.pk %}">Редактировать</a>
+                <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Удалить</a>
+            {% endif %}
         </div>
     </section>
 
@@ -98,8 +106,15 @@
                 <dt>Описание</dt>
                 <dd>{{ page.description|default:"Описание не указано" }}</dd>
 
+                <dt>Видимость</dt>
+                <dd>
+                    <span class="visibility-pill">
+                        {% if page.is_public %}Публичная форма{% else %}Личная форма{% endif %}
+                    </span>
+                </dd>
+
                 <dt>Автор</dt>
-                <dd>{{ page.created_by }}</dd>
+                <dd>Автор: {{ page.created_by.username }}</dd>
 
                 <dt>Дата создания</dt>
                 <dd>{{ page.created_at|date:"Y-m-d H:i" }}</dd>
@@ -107,7 +122,7 @@
         </section>
 
         <aside class="panel test-run-panel">
-            <h2 class="test-run-panel-title">Тест-раны этой формы</h2>
+            <h2 class="test-run-panel-title">Мои тест-раны этой формы</h2>
 
             {% if test_run_sessions %}
                 <div class="session-list">
@@ -136,7 +151,7 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="muted">Пока нет созданных тест-ранов.</p>
+                <p class="muted">У вас пока нет созданных тест-ранов для этой формы.</p>
             {% endif %}
         </aside>
     </div>

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика публичной формы | AI Testing Platform{% endblock %}
+
+{% block content %}
+    <style>
+        .analytics-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .analytics-stat {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .analytics-stat strong {
+            display: block;
+            font-size: 24px;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 900px) {
+            .analytics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <section class="page-header">
+        <div>
+            <h1>Аналитика публичной формы</h1>
+            <p class="subtitle">{{ page.name }}</p>
+        </div>
+        <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Назад</a>
+    </section>
+
+    <section class="panel" style="margin-bottom: 20px;">
+        <div class="analytics-grid">
+            <div class="analytics-stat">
+                <span class="muted">Внешние тест-раны</span>
+                <strong>{{ total_external_sessions }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Уникальные пользователи</span>
+                <strong>{{ unique_external_users_count }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Всего проверок тест-кейсов</span>
+                <strong>{{ total_results_count }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Процент выполненных проверок</span>
+                <strong>{{ completion_percentage }}%</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Пройдено тест-кейсов</span>
+                <strong>{{ passed_count }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Провалено тест-кейсов</span>
+                <strong>{{ failed_count }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Пропущено тест-кейсов</span>
+                <strong>{{ skipped_count }}</strong>
+            </div>
+            <div class="analytics-stat">
+                <span class="muted">Не выполнено тест-кейсов</span>
+                <strong>{{ not_run_count }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2 style="margin-top: 0;">Статистика по пользователям</h2>
+        {% if user_rows %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Тест-раны</th>
+                        <th>Пройдено тест-кейсов</th>
+                        <th>Провалено тест-кейсов</th>
+                        <th>Пропущено тест-кейсов</th>
+                        <th>Не выполнено тест-кейсов</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in user_rows %}
+                        <tr>
+                            <td>{{ row.username }}</td>
+                            <td>{{ row.sessions_count }}</td>
+                            <td>{{ row.passed }}</td>
+                            <td>{{ row.failed }}</td>
+                            <td>{{ row.skipped }}</td>
+                            <td>{{ row.not_run }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Другие пользователи пока не проходили эту публичную форму.</p>
+        {% endif %}
+    </section>
+{% endblock %}

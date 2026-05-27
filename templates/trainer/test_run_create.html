@@ -54,8 +54,10 @@
             <p class="subtitle">{{ page.name }}</p>
         </div>
         <div class="actions">
-            <a class="button secondary" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI-генерация</a>
-            <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">К странице</a>
+            {% if is_owner %}
+                <a class="button secondary" href="{% url 'trainer:page_generate_test_cases' page.pk %}">AI-генерация</a>
+            {% endif %}
+            <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Назад</a>
         </div>
     </section>
 
@@ -127,8 +129,12 @@
             </section>
         {% else %}
             <section class="panel">
-                <p>Для этой страницы пока нет тест-кейсов. Сначала выполните AI-генерацию.</p>
-                <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">Перейти к AI-генерации</a>
+                {% if is_owner %}
+                    <p>Для этой страницы пока нет тест-кейсов. Сначала выполните AI-генерацию.</p>
+                    <a class="button" href="{% url 'trainer:page_generate_test_cases' page.pk %}">Перейти к AI-генерации</a>
+                {% else %}
+                    <p class="muted">Для этой публичной формы пока нет тест-кейсов. Автор еще не подготовил практику.</p>
+                {% endif %}
             </section>
         {% endif %}
     </div>

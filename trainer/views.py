@@ -7,6 +7,8 @@ from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -75,6 +77,21 @@ class PageSchemaListView(LoginRequiredMixin, ListView):
     template_name = "trainer/page_list.html"
     context_object_name = "pages"
 
+    def get_queryset(self):
+        return PageSchema.objects.filter(created_by=self.request.user).select_related(
+            "created_by"
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["owner_pages"] = context["pages"]
+        context["public_pages"] = (
+            PageSchema.objects.filter(is_public=True)
+            .exclude(created_by=self.request.user)
+            .select_related("created_by")
+        )
+        return context
+
 
 class PageSchemaCreateView(LoginRequiredMixin, CreateView):
     model = PageSchema
@@ -95,11 +112,18 @@ class PageSchemaDetailView(LoginRequiredMixin, DetailView):
     template_name = "trainer/page_detail.html"
     context_object_name = "page"
 
+    def get_queryset(self):
+        return PageSchema.objects.filter(
+            Q(created_by=self.request.user) | Q(is_public=True)
+        ).select_related("created_by")
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        is_owner = self.object.created_by_id == self.request.user.id
         sessions = []
         queryset = (
-            self.object.test_run_sessions.select_related("user")
+            self.object.test_run_sessions.filter(user=self.request.user)
+            .select_related("user")
             .prefetch_related("results")
             .order_by("-created_at")
         )
@@ -129,6 +153,7 @@ class PageSchemaDetailView(LoginRequiredMixin, DetailView):
             )
 
         context["test_run_sessions"] = sessions
+        context["is_owner"] = is_owner
         return context
 
 
@@ -137,6 +162,9 @@ class PageSchemaUpdateView(LoginRequiredMixin, UpdateView):
     form_class = PageSchemaForm
     template_name = "trainer/page_edit.html"
     context_object_name = "page"
+
+    def get_queryset(self):
+        return PageSchema.objects.filter(created_by=self.request.user)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -198,6 +226,9 @@ class PageSchemaDeleteView(LoginRequiredMixin, DeleteView):
     context_object_name = "page"
     success_url = reverse_lazy("trainer:page_list")
 
+    def get_queryset(self):
+        return PageSchema.objects.filter(created_by=self.request.user)
+
     def form_valid(self, form):
         messages.success(self.request, "Страница успешно удалена.")
         return super().form_valid(form)
@@ -216,7 +247,7 @@ def _get_test_case_groups(page):
 
 @login_required
 def page_generate_test_cases(request, pk):
-    page = get_object_or_404(PageSchema, pk=pk)
+    page = get_object_or_404(PageSchema, pk=pk, created_by=request.user)
     fields = page.fields.order_by("order", "id")
     generated_test_cases = []
     generation_batch = None
@@ -252,6 +283,91 @@ def page_generate_test_cases(request, pk):
     )
 
 
+@login_required
+def public_form_analytics_view(request, pk):
+    page = get_object_or_404(PageSchema, pk=pk, created_by=request.user)
+    if not page.is_public:
+        messages.warning(request, "Аналитика доступна только для публичных форм.")
+        return redirect("trainer:page_detail", pk=page.pk)
+
+    sessions = (
+        page.test_run_sessions.exclude(user=request.user)
+        .select_related("user")
+        .prefetch_related("results")
+        .order_by("user__username", "-created_at")
+    )
+
+    totals = {
+        "total_sessions": 0,
+        "unique_users": set(),
+        "total_results": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0,
+    }
+    user_rows = {}
+
+    for session in sessions:
+        username = session.user.username
+        totals["total_sessions"] += 1
+        totals["unique_users"].add(session.user_id)
+        row = user_rows.setdefault(
+            session.user_id,
+            {
+                "username": username,
+                "sessions_count": 0,
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "not_run": 0,
+            },
+        )
+        row["sessions_count"] += 1
+
+        for result in session.results.all():
+            totals["total_results"] += 1
+            if result.status == TestRunResult.Status.PASSED:
+                totals["passed"] += 1
+                row["passed"] += 1
+            elif result.status == TestRunResult.Status.FAILED:
+                totals["failed"] += 1
+                row["failed"] += 1
+            elif result.status == TestRunResult.Status.SKIPPED:
+                totals["skipped"] += 1
+                row["skipped"] += 1
+            else:
+                totals["not_run"] += 1
+                row["not_run"] += 1
+
+    completed = totals["passed"] + totals["failed"] + totals["skipped"]
+    completion_percentage = (
+        round((completed / totals["total_results"]) * 100)
+        if totals["total_results"]
+        else 0
+    )
+
+    return render(
+        request,
+        "trainer/public_form_analytics.html",
+        {
+            "page": page,
+            "total_external_sessions": totals["total_sessions"],
+            "unique_external_users_count": len(totals["unique_users"]),
+            "total_results_count": totals["total_results"],
+            "passed_count": totals["passed"],
+            "failed_count": totals["failed"],
+            "skipped_count": totals["skipped"],
+            "not_run_count": totals["not_run"],
+            "completion_percentage": completion_percentage,
+            "user_rows": sorted(
+                user_rows.values(),
+                key=lambda row: row["username"].lower(),
+            ),
+        },
+    )
+
+
 def _group_test_cases_by_priority(test_cases):
     return {
         "high": [test_case for test_case in test_cases if test_case.priority == "high"],
@@ -264,7 +380,12 @@ def _group_test_cases_by_priority(test_cases):
 
 @login_required
 def test_run_create_view(request, pk):
-    page = get_object_or_404(PageSchema, pk=pk)
+    page = get_object_or_404(
+        PageSchema,
+        Q(created_by=request.user) | Q(is_public=True),
+        pk=pk,
+    )
+    is_owner = page.created_by_id == request.user.id
     test_cases = list(page.test_cases.order_by("priority", "-created_at", "id"))
 
     if request.method == "POST":
@@ -301,6 +422,7 @@ def test_run_create_view(request, pk):
             "test_cases": test_cases,
             "grouped_test_cases": _group_test_cases_by_priority(test_cases),
             "form": form,
+            "is_owner": is_owner,
         },
     )
 
@@ -322,13 +444,15 @@ def _sort_results_for_execution(results):
 
 @login_required
 def test_run_execute_view(request, page_id, session_id):
-    page = get_object_or_404(PageSchema, pk=page_id)
     session = get_object_or_404(
         TestRunSession,
         pk=session_id,
-        page=page,
+        page_id=page_id,
         user=request.user,
     )
+    page = session.page
+    if page.created_by_id != request.user.id and not page.is_public:
+        raise Http404("Форма недоступна.")
     submitted_data = None
     sandbox_form = DynamicSandboxForm(page_schema=page)
 
@@ -386,7 +510,11 @@ class SandboxView(LoginRequiredMixin, View):
     template_name = "trainer/sandbox.html"
 
     def get_page(self):
-        return get_object_or_404(PageSchema, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            PageSchema,
+            Q(created_by=self.request.user) | Q(is_public=True),
+            pk=self.kwargs["pk"],
+        )
 
     def get(self, request, *args, **kwargs):
         page = self.get_page()
@@ -432,7 +560,11 @@ class FieldSchemaUpdateView(LoginRequiredMixin, UpdateView):
     context_object_name = "field"
 
     def dispatch(self, request, *args, **kwargs):
-        self.page = get_object_or_404(PageSchema, pk=kwargs["page_id"])
+        self.page = get_object_or_404(
+            PageSchema,
+            pk=kwargs["page_id"],
+            created_by=request.user,
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
@@ -461,7 +593,11 @@ class FieldSchemaDeleteView(LoginRequiredMixin, DeleteView):
     context_object_name = "field"
 
     def dispatch(self, request, *args, **kwargs):
-        self.page = get_object_or_404(PageSchema, pk=kwargs["page_id"])
+        self.page = get_object_or_404(
+            PageSchema,
+            pk=kwargs["page_id"],
+            created_by=request.user,
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):

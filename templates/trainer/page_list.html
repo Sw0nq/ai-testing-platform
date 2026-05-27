@@ -3,6 +3,27 @@
 {% block title %}Схемы страниц | AI Testing Platform{% endblock %}
 
 {% block content %}
+    <style>
+        .page-section {
+            display: grid;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .section-title {
+            margin: 0;
+        }
+
+        .visibility-pill {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: var(--muted);
+            display: inline-block;
+            font-size: 13px;
+            padding: 3px 9px;
+        }
+    </style>
+
     <section class="page-header">
         <div>
             <h1>AI Testing Platform</h1>
@@ -11,29 +32,34 @@
         <a class="button" href="{% url 'trainer:page_create' %}">Создать страницу</a>
     </section>
 
-    <section class="panel">
-        {% if pages %}
+    <section class="page-section">
+        <h2 class="section-title">Мои формы</h2>
+        <div class="panel">
+        {% if owner_pages %}
             <table class="table">
                 <thead>
                     <tr>
                         <th>Название</th>
                         <th>Описание</th>
-                        <th>Автор</th>
+                        <th>Видимость</th>
                         <th>Дата создания</th>
                         <th>Действия</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for page in pages %}
+                    {% for page in owner_pages %}
                         <tr>
                             <td>{{ page.name }}</td>
                             <td>{{ page.description|default:"Описание не указано" }}</td>
-                            <td>{{ page.created_by }}</td>
+                            <td>
+                                <span class="visibility-pill">
+                                    {% if page.is_public %}Публичная форма{% else %}Личная форма{% endif %}
+                                </span>
+                            </td>
                             <td>{{ page.created_at|date:"Y-m-d H:i" }}</td>
                             <td>
                                 <div class="actions">
-                                    <a class="button secondary" href="{% url 'trainer:page_detail' page.pk %}">Открыть</a>
-                                    <a class="button secondary" href="{% url 'trainer:page_edit' page.pk %}">Редактировать</a>
+                                    <a class="button" href="{% url 'trainer:page_detail' page.pk %}">Открыть</a>
                                     <a class="button danger" href="{% url 'trainer:page_delete' page.pk %}">Удалить</a>
                                 </div>
                             </td>
@@ -42,7 +68,42 @@
                 </tbody>
             </table>
         {% else %}
-            <p class="muted">Схемы страниц пока не созданы.</p>
+            <p class="muted">У вас пока нет собственных форм. Создайте первую форму для практики.</p>
         {% endif %}
+        </div>
+    </section>
+
+    <section class="page-section">
+        <h2 class="section-title">Публичные формы для практики</h2>
+        <div class="panel">
+        {% if public_pages %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Описание</th>
+                        <th>Автор</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for page in public_pages %}
+                        <tr>
+                            <td>{{ page.name }}</td>
+                            <td>{{ page.description|default:"Описание не указано" }}</td>
+                            <td>Автор: {{ page.created_by.username }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="button" href="{% url 'trainer:page_detail' page.pk %}">Открыть</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Публичных форм для практики пока нет.</p>
+        {% endif %}
+        </div>
     </section>
 {% endblock %}
